@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from typing import Any, Sequence
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -74,19 +74,6 @@ async def app_error_handler(request: Request, exc: AppError):
         request=request,
         details=exc.details,
         override_message=exc.override_message,
-    )
-
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "status": exc.status_code,
-            "detail": exc.detail,
-            "instance": request.url.path,
-            "timestamp": _now_iso(),
-        },
     )
 
 

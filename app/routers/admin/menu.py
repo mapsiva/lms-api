@@ -1,56 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_tenant, require_admin
-from app.models.menu import MenuConfig
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.schemas.menu import MenuResponse, MenuUpdate
+from app.services import menu as menu_service
 
 router = APIRouter(prefix="/admin/menu", tags=["admin:menu"])
 
 
-@router.get("")
+@router.get("", response_model=MenuResponse)
 async def get_admin_menu(
     role: str,
     tenant: Tenant = Depends(get_current_tenant),
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(MenuConfig).where(
-            MenuConfig.tenant_id == tenant.id,
-            MenuConfig.role == role,
-        )
-    )
-    config = result.scalar_one_or_none()
-    if not config:
-        raise HTTPException(status_code=404, detail="Menu config not found")
+    config = await menu_service.get_menu_config(db, tenant.id, role)
     return {"role": config.role, "items": config.items}
 
 
-@router.put("")
+@router.put("", response_model=MenuResponse)
 async def update_menu(
     role: str,
-    body: dict,
+    body: MenuUpdate,
     tenant: Tenant = Depends(get_current_tenant),
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    items = body.get("items", [])
-    result = await db.execute(
-        select(MenuConfig).where(
-            MenuConfig.tenant_id == tenant.id,
-            MenuConfig.role == role,
-        )
-    )
-    config = result.scalar_one_or_none()
-    if config:
-        config.items = items
-    else:
-        config = MenuConfig(tenant_id=tenant.id, role=role, items=items)
-        db.add(config)
-    await db.commit()
-    await db.refresh(config)
+    config = await menu_service.update_menu_config(db, tenant.id, role, body.items)
     return {"role": config.role, "items": config.items}

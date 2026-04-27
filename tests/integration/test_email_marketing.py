@@ -71,7 +71,7 @@ async def admin_client(db_session, redis_client, tenant, admin_user):
 async def test_create_audience(admin_client, tenant):
     resp = await admin_client.post(
         "/admin/email/audiences",
-        params={"name": "All Students", "filter_json": '{"role": "student"}'},
+        json={"name": "All Students", "filter_json": {"role": "student"}},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -94,7 +94,7 @@ async def test_list_audiences(admin_client, tenant, db_session):
 async def test_create_template(admin_client, tenant):
     resp = await admin_client.post(
         "/admin/email/templates",
-        params={"name": "Welcome", "subject": "Bem-vindo", "html_body": "<p>Ola</p>"},
+        json={"name": "Welcome", "subject": "Bem-vindo", "html_body": "<p>Ola</p>"},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -113,7 +113,7 @@ async def test_create_campaign(admin_client, tenant, db_session):
 
     resp = await admin_client.post(
         "/admin/email/campaigns",
-        params={"name": "C1", "template_id": str(tmpl.id), "audience_id": str(aud.id)},
+        json={"name": "C1", "template_id": str(tmpl.id), "audience_id": str(aud.id)},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -135,7 +135,7 @@ async def test_send_campaign(admin_client, tenant, db_session, student_user):
     await db_session.refresh(camp)
 
     from unittest.mock import patch
-    with patch("app.routers.admin.email.celery_app.send_task") as mock_send:
+    with patch("app.services.email.celery_app.send_task") as mock_send:
         resp = await admin_client.post(f"/admin/email/campaigns/{camp.id}/send")
     assert resp.status_code == 200
     data = resp.json()
@@ -148,7 +148,7 @@ async def test_send_campaign(admin_client, tenant, db_session, student_user):
 async def test_create_automation(admin_client, tenant):
     resp = await admin_client.post(
         "/admin/email/automations",
-        params={"name": "Welcome Flow", "trigger_event": "enrollment.created", "steps": '[{"subject":"Hi","template_html":"<p>Hi</p>"}]'},
+        json={"name": "Welcome Flow", "trigger_event": "enrollment.created", "steps": [{"subject": "Hi", "template_html": "<p>Hi</p>"}]},
     )
     assert resp.status_code == 201
     data = resp.json()

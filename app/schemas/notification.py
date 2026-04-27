@@ -32,3 +32,12 @@ class PushSubscribeRequest(BaseModel):
     endpoint: str
     p256dh: str
     auth: str
+
+
+class StatusOkResponse(BaseModel):
+    status: str
+
+
+class BroadcastResponse(BaseModel):
+    status: str
+    created_count: int

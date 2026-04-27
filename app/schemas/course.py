@@ -231,3 +231,25 @@ class SearchResult(BaseModel):
     lesson_title: str
     module_title: str
     snippet: Optional[str]
+
+
+class ReorderResponse(BaseModel):
+    reordered: int
+
+
+class TranscriptionQueueResponse(BaseModel):
+    status: str
+    lesson_id: str
+
+
+class TranscriptResponse(BaseModel):
+    status: str
+    lesson_id: str
+    transcript: Optional[dict[str, Any]] = None
+
+
+class BunnyVideoItem(BaseModel):
+    video_id: str
+    title: str
+    duration_seconds: int
+    thumbnail_url: Optional[str] = None

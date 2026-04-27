@@ -104,8 +104,10 @@ async def refresh_access_token(
         select(User).where(User.id == user_id, User.tenant_id == tenant_id)
     )
     user = result.scalar_one_or_none()
-    if not user or user.is_suspended:
-        raise AppError(ErrorCode.USER_NOT_FOUND)
+    if not user:
+        raise AppError(ErrorCode.AUTH_USER_NOT_FOUND)
+    if user.is_suspended:
+        raise AppError(ErrorCode.ACCOUNT_SUSPENDED)
 
     # Rotate: revoke old, issue new
     await revoke_refresh_token(refresh_token)
@@ -154,7 +156,7 @@ async def verify_magic_link(
     )
     user = result.scalar_one_or_none()
     if not user:
-        raise AppError(ErrorCode.USER_NOT_FOUND)
+        raise AppError(ErrorCode.AUTH_USER_NOT_FOUND)
 
     access_token = create_access_token(
         str(user.id), str(tenant_id), user.role,
@@ -200,7 +202,7 @@ async def reset_password(
     )
     user = result.scalar_one_or_none()
     if not user:
-        raise AppError(ErrorCode.USER_NOT_FOUND)
+        raise AppError(ErrorCode.AUTH_USER_NOT_FOUND)
 
     user.password_hash = hash_password(new_password)
     await db.commit()

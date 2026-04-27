@@ -10,7 +10,6 @@ Usage:
 """
 
 from dataclasses import dataclass
-from http import HTTPStatus
 
 
 @dataclass(frozen=True)
@@ -174,6 +173,11 @@ class ErrorCode:
         code="USER_NOT_FOUND",
         message="Usuário não encontrado.",
         http_status=404,
+    )
+    AUTH_USER_NOT_FOUND = ErrorDefinition(
+        code="AUTH_USER_NOT_FOUND",
+        message="Usuário não encontrado.",
+        http_status=401,
     )
     USER_ALREADY_EXISTS = ErrorDefinition(
         code="USER_ALREADY_EXISTS",

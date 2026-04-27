@@ -1,7 +1,7 @@
 import uuid
 import pytest
-from fastapi import HTTPException
 
+from app.core.errors import AppError
 from app.core.redis_client import get_redis
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -56,9 +56,9 @@ async def test_register_user_success(db_session, tenant, redis_client):
 
 
 async def test_register_duplicate_email_raises_409(db_session, tenant, registered_user, redis_client):
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await register_user(db_session, tenant.id, "alice@example.com", "Alice2", "password456")
-    assert exc_info.value.status_code == 409
+    assert exc_info.value.error_def.http_status == 409
 
 
 async def test_register_same_email_different_tenants(db_session, redis_client):
@@ -93,15 +93,15 @@ async def test_login_user_success(db_session, tenant, registered_user, redis_cli
 
 
 async def test_login_wrong_password_raises_401(db_session, tenant, registered_user, redis_client):
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await login_user(db_session, tenant.id, "alice@example.com", "wrongpassword")
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 async def test_login_nonexistent_user_raises_401(db_session, tenant, redis_client):
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await login_user(db_session, tenant.id, "nobody@example.com", "password")
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 # ── logout + refresh ──────────────────────────────────────────────────────────
@@ -130,9 +130,9 @@ async def test_refresh_access_token_rotates(db_session, tenant, registered_user,
 
 
 async def test_refresh_invalid_token_raises_401(db_session, tenant, redis_client):
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await refresh_access_token(db_session, tenant.id, "invalid-token")
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 # ── magic link ───────────────────────────────────────────────────────────────
@@ -176,6 +176,6 @@ async def test_password_reset_old_password_fails(db_session, tenant, registered_
     token = await send_password_reset(db_session, tenant.id, "alice@example.com")
     await reset_password(db_session, tenant.id, token, "newpassword456")
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await login_user(db_session, tenant.id, "alice@example.com", "password123")
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401

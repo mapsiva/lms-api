@@ -86,7 +86,7 @@ async def get_current_user(
     )
     user = result.scalar_one_or_none()
     if not user:
-        raise AppError(ErrorCode.USER_NOT_FOUND)
+        raise AppError(ErrorCode.AUTH_USER_NOT_FOUND)
 
     if user.is_suspended:
         raise AppError(ErrorCode.ACCOUNT_SUSPENDED)

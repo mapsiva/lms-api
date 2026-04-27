@@ -2,10 +2,10 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.dependencies import get_current_user, get_current_tenant, require_admin
+from app.core.errors import AppError
 from app.core.security import create_access_token
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -81,9 +81,9 @@ async def test_get_current_tenant_not_found():
     db.execute.return_value = result
 
     with patch("app.core.dependencies.get_redis", return_value=mock_redis):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AppError) as exc_info:
             await get_current_tenant(request, db)
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.error_def.http_status == 404
 
 
 # ── get_current_user ─────────────────────────────────────────────────────────
@@ -108,9 +108,9 @@ async def test_get_current_user_valid():
 async def test_get_current_user_no_credentials():
     tenant = _make_tenant()
     db = AsyncMock()
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await get_current_user(tenant=tenant, credentials=None, db=db)
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 @pytest.mark.asyncio
@@ -121,9 +121,9 @@ async def test_get_current_user_wrong_tenant():
     credentials = HTTPAuthorizationCredentials(scheme="bearer", credentials=token)
     db = AsyncMock()
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await get_current_user(tenant=tenant, credentials=credentials, db=db)
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 @pytest.mark.asyncio
@@ -138,9 +138,9 @@ async def test_get_current_user_suspended():
     db = AsyncMock()
     db.execute.return_value = result
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await get_current_user(tenant=tenant, credentials=credentials, db=db)
-    assert exc_info.value.status_code == 403
+    assert exc_info.value.error_def.http_status == 403
 
 
 @pytest.mark.asyncio
@@ -155,9 +155,9 @@ async def test_get_current_user_not_found_in_db():
     db = AsyncMock()
     db.execute.return_value = result
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         await get_current_user(tenant=tenant, credentials=credentials, db=db)
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 # ── require_admin ────────────────────────────────────────────────────────────
@@ -176,13 +176,13 @@ def test_require_admin_passes_for_super_admin():
 
 def test_require_admin_blocks_student():
     user = _make_user(role="student")
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         require_admin(user=user)
-    assert exc_info.value.status_code == 403
+    assert exc_info.value.error_def.http_status == 403
 
 
 def test_require_admin_blocks_manager():
     user = _make_user(role="manager")
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         require_admin(user=user)
-    assert exc_info.value.status_code == 403
+    assert exc_info.value.error_def.http_status == 403

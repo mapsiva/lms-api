@@ -1,8 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from fastapi import HTTPException
-
+from app.core.errors import AppError
 from app.core.security import (
     create_access_token,
     create_magic_link_token,
@@ -44,17 +43,17 @@ def test_access_token_without_company_id():
 
 
 def test_access_token_decode_invalid():
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         decode_token("invalid.token.here")
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 def test_access_token_decode_tampered():
     token = create_access_token("user-1", "tenant-1", "admin")
     tampered = token[:-5] + "XXXXX"
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         decode_token(tampered)
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.error_def.http_status == 401
 
 
 @pytest.mark.asyncio
@@ -122,6 +121,6 @@ async def test_magic_link_verify_invalid():
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     with patch("app.core.security.get_redis", return_value=mock_redis):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AppError) as exc_info:
             await verify_magic_link_token("nonexistent-token")
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.error_def.http_status == 401

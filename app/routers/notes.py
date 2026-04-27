@@ -1,9 +1,6 @@
 import uuid
-from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,30 +8,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_tenant, get_current_user
 from app.models.course import Lesson
 from app.models.progress import Note
+from app.schemas.note import NoteCreate, NoteResponse, NoteUpdate
 
 router = APIRouter(tags=["notes"])
-
-
-class NoteCreate(BaseModel):
-    content: str = Field(min_length=1)
-    video_timestamp_seconds: Optional[int] = None
-
-
-class NoteUpdate(BaseModel):
-    content: Optional[str] = Field(None, min_length=1)
-    video_timestamp_seconds: Optional[int] = None
-
-
-class NoteResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    user_id: uuid.UUID
-    lesson_id: uuid.UUID
-    content: str
-    video_timestamp_seconds: Optional[int]
-    created_at: datetime
-    updated_at: datetime
 
 
 @router.get("/lessons/{lesson_id}/notes", response_model=list[NoteResponse])

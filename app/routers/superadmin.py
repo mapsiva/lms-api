@@ -1,10 +1,8 @@
 """Superadmin routes (no tenant binding)."""
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +13,7 @@ from app.models.enrollment import Enrollment
 from app.models.menu import MenuConfig
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.schemas.tenant import TenantCreate, TenantUpdate
 
 router = APIRouter(prefix="/superadmin", tags=["superadmin"])
 
@@ -33,32 +32,6 @@ _DEFAULT_MANAGER_MENU = _DEFAULT_STUDENT_MENU + [
 _DEFAULT_ADMIN_MENU = _DEFAULT_MANAGER_MENU + [
     {"id": "admin", "label": "Admin", "icon": "settings", "url": "/admin", "order": 10, "group": "admin", "visible": True},
 ]
-
-
-class TenantCreate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    slug: str = Field(..., min_length=1, max_length=100)
-    name: str = Field(..., min_length=1, max_length=255)
-    custom_domain: Optional[str] = Field(None, max_length=255)
-    subdomain: Optional[str] = Field(None, max_length=100)
-    plan: str = "free"
-
-
-class TenantUpdate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    slug: Optional[str] = Field(None, min_length=1, max_length=100)
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    custom_domain: Optional[str] = Field(None, max_length=255)
-    subdomain: Optional[str] = Field(None, max_length=100)
-    plan: Optional[str] = None
-    logo_url: Optional[str] = Field(None, max_length=500)
-    favicon_url: Optional[str] = Field(None, max_length=500)
-    primary_color: Optional[str] = Field(None, max_length=7)
-    secondary_color: Optional[str] = Field(None, max_length=7)
-    font_family: Optional[str] = Field(None, max_length=100)
-    app_name: Optional[str] = Field(None, max_length=255)
 
 
 def require_super_admin(

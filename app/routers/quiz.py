@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +13,13 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_tenant, get_current_user
 from app.models.quiz import QuizBattle, QuizBattleAnswer
 from app.models.user import User
+from app.schemas.quiz import (
+    BattleAnswerResponse,
+    BattleAnswerSubmit,
+    BattleCreate,
+    BattleDetailResponse,
+    BattleListItem,
+)
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -46,55 +52,6 @@ _DEFAULT_QUESTIONS: list[dict[str, Any]] = [
         "correct_index": 3,
     },
 ]
-
-
-# ── Schemas ──────────────────────────────────────────────────────────────────
-
-
-class BattleCreate(BaseModel):
-    opponent_id: uuid.UUID
-    course_id: Optional[uuid.UUID] = None
-
-
-class BattleListItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    challenger_id: uuid.UUID
-    opponent_id: uuid.UUID
-    course_id: Optional[uuid.UUID]
-    status: str
-    winner_id: Optional[uuid.UUID]
-    expires_at: datetime
-    created_at: datetime
-
-
-class BattleAnswerSubmit(BaseModel):
-    answers: dict[str, int]
-
-
-class BattleAnswerResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    battle_id: uuid.UUID
-    user_id: uuid.UUID
-    score: int
-    created_at: datetime
-
-
-class BattleDetailResponse(BaseModel):
-    id: uuid.UUID
-    challenger_id: uuid.UUID
-    opponent_id: uuid.UUID
-    course_id: Optional[uuid.UUID]
-    status: str
-    winner_id: Optional[uuid.UUID]
-    expires_at: datetime
-    created_at: datetime
-    questions: list[dict[str, Any]]
-    challenger_answer: Optional[BattleAnswerResponse]
-    opponent_answer: Optional[BattleAnswerResponse]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

@@ -1,9 +1,7 @@
 """Notifications REST router."""
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,42 +11,14 @@ from app.models.notification import Notification
 from app.models.push_subscription import PushSubscription
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.schemas.notification import (
+    BroadcastRequest,
+    NotificationListResponse,
+    PushSubscribeRequest,
+)
 from app.tasks.notification import dispatch_broadcast_notification_task
 
 router = APIRouter(tags=["notifications"])
-
-
-# ── Response schemas ──────────────────────────────────────────────────────────
-
-
-class NotificationItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    type: str
-    title: str
-    body: str | None
-    is_read: bool
-    created_at: Any
-
-
-class NotificationListResponse(BaseModel):
-    items: list[NotificationItem]
-    total: int
-    page: int
-    page_size: int
-
-
-class BroadcastRequest(BaseModel):
-    type: str | None = "broadcast"
-    title: str
-    body: str | None = None
-    data: dict[str, Any] | None = None
-
-
-class PushSubscribeRequest(BaseModel):
-    endpoint: str
-    p256dh: str
-    auth: str
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────

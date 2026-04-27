@@ -142,3 +142,92 @@ class ReorderRequest(BaseModel):
 
 class BulkImportRequest(BaseModel):
     folder: str
+
+
+class LessonSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    lesson_type: str
+    order_index: int
+    duration_seconds: Optional[int]
+    is_free_preview: bool
+    is_hidden: bool
+    drip_type: str
+
+
+class ModuleWithLessons(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    order_index: int
+    is_hidden: bool
+    lessons: list[LessonSummary] = []
+
+
+class CourseListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    slug: str
+    description: Optional[str]
+    thumbnail_url: Optional[str]
+    status: str
+    certificate_enabled: bool
+
+
+class CourseDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    slug: str
+    description: Optional[str]
+    thumbnail_url: Optional[str]
+    status: str
+    certificate_enabled: bool
+    modules: list[ModuleWithLessons] = []
+
+
+class LessonDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    lesson_type: str
+    order_index: int
+    duration_seconds: Optional[int]
+    is_free_preview: bool
+    video_provider: Optional[str]
+    video_external_id: Optional[str]
+    playback_url: Optional[str]
+    content_url: Optional[str]
+    embed_url: Optional[str]
+    ai_summary: Optional[str]
+    drip_type: str
+    drip_accessible: bool
+    drip_reason: Optional[str]
+
+
+class ProgressUpdate(BaseModel):
+    watch_seconds: int = 0
+    completed: bool = False
+
+
+class ProgressResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    lesson_id: uuid.UUID
+    watch_seconds: int
+    completed_at: Optional[datetime]
+    last_watched_at: Optional[datetime]
+
+
+class ContinueResponse(BaseModel):
+    lesson_id: Optional[uuid.UUID]
+    course_id: uuid.UUID
+
+
+class SearchResult(BaseModel):
+    lesson_id: uuid.UUID
+    lesson_title: str
+    module_title: str
+    snippet: Optional[str]

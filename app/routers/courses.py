@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,101 +13,20 @@ from app.models.course import Course, Lesson, Module
 from app.models.enrollment import Enrollment
 from app.models.product import ProductCourse
 from app.models.progress import LessonProgress
+from app.schemas.course import (
+    ContinueResponse,
+    CourseDetail,
+    CourseListItem,
+    LessonDetailResponse,
+    ModuleWithLessons,
+    ProgressResponse,
+    ProgressUpdate,
+    SearchResult,
+)
 
 router = APIRouter(tags=["courses"])
 
 VIDEO_URL_TTL = 7200  # 2 hours
-
-
-# ── Response schemas ──────────────────────────────────────────────────────────
-
-class LessonSummary(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    title: str
-    lesson_type: str
-    order_index: int
-    duration_seconds: Optional[int]
-    is_free_preview: bool
-    is_hidden: bool
-    drip_type: str
-
-
-class ModuleWithLessons(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    title: str
-    order_index: int
-    is_hidden: bool
-    lessons: list[LessonSummary] = []
-
-
-class CourseListItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    title: str
-    slug: str
-    description: Optional[str]
-    thumbnail_url: Optional[str]
-    status: str
-    certificate_enabled: bool
-
-
-class CourseDetail(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    title: str
-    slug: str
-    description: Optional[str]
-    thumbnail_url: Optional[str]
-    status: str
-    certificate_enabled: bool
-    modules: list[ModuleWithLessons] = []
-
-
-class LessonDetailResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    title: str
-    lesson_type: str
-    order_index: int
-    duration_seconds: Optional[int]
-    is_free_preview: bool
-    video_provider: Optional[str]
-    video_external_id: Optional[str]
-    playback_url: Optional[str]
-    content_url: Optional[str]
-    embed_url: Optional[str]
-    ai_summary: Optional[str]
-    drip_type: str
-    drip_accessible: bool
-    drip_reason: Optional[str]
-
-
-class ProgressUpdate(BaseModel):
-    watch_seconds: int = 0
-    completed: bool = False
-
-
-class ProgressResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    lesson_id: uuid.UUID
-    watch_seconds: int
-    completed_at: Optional[datetime]
-    last_watched_at: Optional[datetime]
-
-
-class ContinueResponse(BaseModel):
-    lesson_id: Optional[uuid.UUID]
-    course_id: uuid.UUID
-
-
-class SearchResult(BaseModel):
-    lesson_id: uuid.UUID
-    lesson_title: str
-    module_title: str
-    snippet: Optional[str]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -253,7 +171,10 @@ async def get_course(
             title=mod.title,
             order_index=mod.order_index,
             is_hidden=mod.is_hidden,
-            lessons=[LessonSummary.model_validate(lesson) for lesson in lessons],
+            lessons=[
+                LessonDetailResponse.model_validate(lesson)
+                for lesson in lessons
+            ],
         ))
 
     return CourseDetail(

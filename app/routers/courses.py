@@ -18,6 +18,7 @@ from app.schemas.course import (
     CourseDetail,
     CourseListItem,
     LessonDetailResponse,
+    LessonSummary,
     ModuleWithLessons,
     ProgressResponse,
     ProgressUpdate,
@@ -172,7 +173,7 @@ async def get_course(
             order_index=mod.order_index,
             is_hidden=mod.is_hidden,
             lessons=[
-                LessonDetailResponse.model_validate(lesson)
+                LessonSummary.model_validate(lesson)
                 for lesson in lessons
             ],
         ))

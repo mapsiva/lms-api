@@ -1,5 +1,6 @@
 """Superadmin routes (no tenant binding)."""
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer

@@ -20,7 +20,8 @@ from app.core.database import Base
 
 CompanyStatus = Enum("active", "inactive", "suspended", name="company_status")
 CompanyGoalMetric = Enum(
-    "completion_rate", "avg_score", "total_xp", "enrollments", name="company_goal_metric"
+    "completion_rate", "avg_score", "total_xp", "enrollments", "courses_completed",
+    name="company_goal_metric",
 )
 CompanyGoalStatus = Enum("active", "achieved", "expired", name="company_goal_status")
 

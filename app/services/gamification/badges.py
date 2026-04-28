@@ -38,7 +38,8 @@ async def _count_completed_courses(session: AsyncSession, user_id: uuid.UUID, te
 async def _count_streak_days(session: AsyncSession, user_id: uuid.UUID) -> int:
     from app.models.gamification import UserStreak
 
-    streak = await session.get(UserStreak, user_id)
+    result = await session.execute(select(UserStreak).where(UserStreak.user_id == user_id))
+    streak = result.scalar_one_or_none()
     if streak:
         return streak.current_streak
     return 0

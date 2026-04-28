@@ -29,8 +29,9 @@ recommendation.
 
 from pathspec import util
 from pathspec.backend import (
+	BackendNamesHint,
 	_Backend,
-	BackendNamesHint)
+	_TestBackendFactoryHint)
 from pathspec._backends.agg import (
 	make_pathspec_backend)
 from pathspec.pattern import (
@@ -44,13 +45,14 @@ from pathspec.util import (
 	CheckResult,
 	StrPath,
 	TPattern,
+	TPattern_co,
 	TStrPath,
 	TreeEntry,
 	_is_iterable,
 	normalize_file)
 
 
-class PathSpec(Generic[TPattern]):
+class PathSpec(Generic[TPattern_co]):
 	"""
 	The :class:`PathSpec` class is a wrapper around a list of compiled
 	:class:`.Pattern` instances.
@@ -58,10 +60,10 @@ class PathSpec(Generic[TPattern]):
 
 	def __init__(
 		self,
-		patterns: Union[Sequence[TPattern], Iterable[TPattern]],
+		patterns: Union[Sequence[TPattern_co], Iterable[TPattern_co]],
 		*,
 		backend: Union[BackendNamesHint, str, None] = None,
-		_test_backend_factory: Optional[Callable[[Sequence[TPattern]], _Backend]] = None,
+		_test_backend_factory: _TestBackendFactoryHint = None,
 	) -> None:
 		"""
 		Initializes the :class:`.PathSpec` instance.
@@ -75,17 +77,19 @@ class PathSpec(Generic[TPattern]):
 		available backend. Priority of backends is: "re2", "hyperscan", "simple".
 		The "simple" backend is always available.
 		"""
-		if not isinstance(patterns, Sequence):
-			patterns = list(patterns)
+		if isinstance(patterns, Sequence):
+			use_patterns = patterns
+		else:
+			use_patterns = list(patterns)
 
 		if backend is None:
 			backend = 'best'
 
-		backend = cast(BackendNamesHint, backend)
+		backend_name = cast(BackendNamesHint, backend)
 		if _test_backend_factory is not None:
-			use_backend = _test_backend_factory(patterns)
+			use_backend = _test_backend_factory(use_patterns)
 		else:
-			use_backend = self._make_backend(backend, patterns)
+			use_backend = self._make_backend(backend_name, use_patterns)
 
 		self._backend: _Backend = use_backend
 		"""
@@ -93,12 +97,12 @@ class PathSpec(Generic[TPattern]):
 		backend.
 		"""
 
-		self._backend_name: BackendNamesHint = backend
+		self._backend_name: BackendNamesHint = backend_name
 		"""
 		*_backend_name* (:class:`str`) is the name of backend to use.
 		"""
 
-		self.patterns: Sequence[TPattern] = patterns
+		self.patterns: Sequence[TPattern_co] = use_patterns
 		"""
 		*patterns* (:class:`~collections.abc.Sequence` of :class:`.Pattern`)
 		contains the compiled patterns.
@@ -116,7 +120,7 @@ class PathSpec(Generic[TPattern]):
 		:class:`PathSpec` instances.
 		"""
 		if isinstance(other, PathSpec):
-			return self.__class__(self.patterns + other.patterns, backend=self._backend_name)
+			return self.__class__([*self.patterns, *other.patterns], backend=self._backend_name)
 		else:
 			return NotImplemented
 
@@ -131,13 +135,13 @@ class PathSpec(Generic[TPattern]):
 		else:
 			return NotImplemented
 
-	def __iadd__(self: Self, other: PathSpec) -> Self:
+	def __iadd__(self: Self, other: PathSpec) -> Self:  # type: ignore[misc]
 		"""
 		Adds the :attr:`self.patterns <.PathSpec.patterns>` from *other*
 		(:class:`PathSpec`) to this instance.
 		"""
 		if isinstance(other, PathSpec):
-			self.patterns += other.patterns
+			self.patterns = [*self.patterns, *other.patterns]
 			self._backend = self._make_backend(self._backend_name, self.patterns)
 			return self
 		else:
@@ -239,8 +243,32 @@ class PathSpec(Generic[TPattern]):
 		lines: Iterable[AnyStr],
 		*,
 		backend: Union[BackendNamesHint, str, None] = None,
-		_test_backend_factory: Optional[Callable[[Sequence[Pattern]], _Backend]] = None,
+		_test_backend_factory: _TestBackendFactoryHint = None,
 	) -> PathSpec[GitIgnoreBasicPattern]:
+		...
+
+	@overload
+	@classmethod
+	def from_lines(
+		cls: type[PathSpec],
+		pattern_factory: str,
+		lines: Iterable[AnyStr],
+		*,
+		backend: Union[BackendNamesHint, str, None] = None,
+		_test_backend_factory: _TestBackendFactoryHint = None,
+	) -> PathSpec[Pattern]:
+		...
+
+	@overload
+	@classmethod
+	def from_lines(
+		cls: type[PathSpec],
+		pattern_factory: type[TPattern],
+		lines: Iterable[AnyStr],
+		*,
+		backend: Union[BackendNamesHint, str, None] = None,
+		_test_backend_factory: _TestBackendFactoryHint = None,
+	) -> PathSpec[TPattern]:
 		...
 
 	@overload
@@ -251,30 +279,18 @@ class PathSpec(Generic[TPattern]):
 		lines: Iterable[AnyStr],
 		*,
 		backend: Union[BackendNamesHint, str, None] = None,
-		_test_backend_factory: Optional[Callable[[Sequence[TPattern]], _Backend]] = None,
+		_test_backend_factory: _TestBackendFactoryHint = None,
 	) -> PathSpec[TPattern]:
-		...
-
-	@overload
-	@classmethod
-	def from_lines(
-		cls: type[PathSpec],
-		pattern_factory: Union[str, Callable[[AnyStr], Pattern]],
-		lines: Iterable[AnyStr],
-		*,
-		backend: Union[BackendNamesHint, str, None] = None,
-		_test_backend_factory: Optional[Callable[[Sequence[Pattern]], _Backend]] = None,
-	) -> PathSpec[Pattern]:
 		...
 
 	@classmethod
 	def from_lines(
 		cls: type[Self],
-		pattern_factory: Union[str, Callable[[AnyStr], Pattern]],
+		pattern_factory: Union[str, type[Pattern], Callable[[AnyStr], Pattern]],
 		lines: Iterable[AnyStr],
 		*,
 		backend: Union[BackendNamesHint, str, None] = None,
-		_test_backend_factory: Optional[Callable[[Sequence[Pattern]], _Backend]] = None,
+		_test_backend_factory: _TestBackendFactoryHint = None,
 	) -> Self:
 		"""
 		Compiles the pattern lines.
@@ -296,17 +312,20 @@ class PathSpec(Generic[TPattern]):
 
 		Returns the :class:`PathSpec` instance.
 		"""
+		use_factory: Callable[[AnyStr], Pattern]
 		if isinstance(pattern_factory, str):
-			pattern_factory = util.lookup_pattern(pattern_factory)
-
-		if not callable(pattern_factory):
+			use_factory = util.lookup_pattern(pattern_factory)  # type: ignore[assignment]
+		elif callable(pattern_factory):
+			use_factory = pattern_factory  # type: ignore[assignment]
+		else:
 			raise TypeError(f"pattern_factory:{pattern_factory!r} is not callable.")
 
 		if not _is_iterable(lines):
 			raise TypeError(f"lines:{lines!r} is not an iterable.")
 
-		patterns = [pattern_factory(line) for line in lines if line]
-		return cls(patterns, backend=backend, _test_backend_factory=_test_backend_factory)
+		patterns = [use_factory(__line) for __line in lines if __line]  # type: ignore[arg-type]
+		self = cls(patterns, backend=backend, _test_backend_factory=_test_backend_factory)
+		return self
 
 	@staticmethod
 	def _make_backend(
@@ -389,11 +408,11 @@ class PathSpec(Generic[TPattern]):
 
 	def match_files(
 		self,
-		files: Iterable[StrPath],
+		files: Iterable[TStrPath],
 		separators: Optional[Collection[str]] = None,
 		*,
 		negate: Optional[bool] = None,
-	) -> Iterator[StrPath]:
+	) -> Iterator[TStrPath]:
 		"""
 		Matches the files to this path-spec.
 

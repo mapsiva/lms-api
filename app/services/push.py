@@ -1,4 +1,4 @@
-"""Push notification service stub."""
+"""Push notification service."""
 import logging
 import uuid
 
@@ -7,19 +7,19 @@ logger = logging.getLogger(__name__)
 
 async def send_push_notification(
     user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     title: str,
-    body: str,
+    body: str | None = None,
     action_url: str | None = None,
 ) -> None:
-    """Send a Web Push notification to all subscriptions for a user.
+    """Dispatch Web Push to all subscriptions for a user via Celery."""
+    from app.tasks.notification import dispatch_push_notification_task
 
-    Raises:
-        NotImplementedError: pywebpush is available but full integration not wired yet.
-    """
-    logger.info(
-        "Push notification stub: user=%s title=%s action_url=%s",
-        user_id,
+    dispatch_push_notification_task.delay(
+        str(user_id),
+        str(tenant_id),
         title,
+        body,
         action_url,
     )
-    raise NotImplementedError("send_push_notification is not yet implemented")
+    logger.debug("Push notification queued user=%s title=%s", user_id, title)

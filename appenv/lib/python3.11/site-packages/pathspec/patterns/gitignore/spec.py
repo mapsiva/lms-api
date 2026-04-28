@@ -221,16 +221,16 @@ class GitIgnoreSpecPattern(_GitIgnoreBasePattern):
 			include = True
 
 		# Split pattern into segments.
-		pattern_segs = pattern_str.split('/')
+		orig_segs = pattern_str.split('/')
 
 		# Check whether the pattern is specifically a directory pattern before
 		# normalization.
-		is_dir_pattern = not pattern_segs[-1]
+		is_dir_pattern = not orig_segs[-1]
 
 		# Normalize pattern to make processing easier.
 		try:
 			pattern_segs, override_regex = cls.__normalize_segments(
-				is_dir_pattern, pattern_segs,
+				is_dir_pattern, orig_segs,
 			)
 		except ValueError as e:
 			raise GitIgnorePatternError((
@@ -263,9 +263,10 @@ class GitIgnoreSpecPattern(_GitIgnoreBasePattern):
 		# Encode regex if needed.
 		out_regex: AnyStr
 		if regex is not None and return_type is bytes:
-			out_regex = regex.encode(_BYTES_ENCODING)
+			regex_bytes = regex.encode(_BYTES_ENCODING)
+			out_regex = regex_bytes  # type: ignore[assignment]
 		else:
-			out_regex = regex
+			out_regex = regex  # type: ignore[assignment]
 
 		return (out_regex, include)
 

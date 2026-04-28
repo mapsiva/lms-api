@@ -46,8 +46,36 @@ class Settings(BaseSettings):
     monetizze_webhook_secret: SecretStr = SecretStr("")
     stripe_webhook_secret: SecretStr = SecretStr("")
 
+    # Mux
+    mux_token_id: str = ""
+    mux_token_secret: SecretStr = SecretStr("")
+    mux_signing_key_id: str = ""
+    mux_signing_key_secret: SecretStr = SecretStr("")  # base64-encoded RSA private key
+
+    # Vimeo
+    vimeo_access_token: SecretStr = SecretStr("")
+
+    # Panda Video
+    panda_api_key: SecretStr = SecretStr("")
+    panda_cdn_hostname: str = ""
+
     # AI
     anthropic_api_key: SecretStr = SecretStr("")
+
+    # Groq
+    groq_api_key: SecretStr = SecretStr("")
+    groq_model: str = "llama-3.3-70b-versatile"
+
+    # OpenRouter
+    openrouter_api_key: SecretStr = SecretStr("")
+    openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"
+    openrouter_site_url: str = ""
+    openrouter_app_name: str = "LMS"
+
+    # Web Push (VAPID)
+    vapid_private_key: str = ""
+    vapid_public_key: str = ""
+    vapid_claims_email: str = ""
 
     # Misc
     webhook_test_mode: bool = False

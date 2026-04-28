@@ -15,5 +15,6 @@ from app.models.messaging import Conversation, ConversationParticipant, Message 
 from app.models.notification import Notification, UserSession  # noqa: F401
 from app.models.push_subscription import PushSubscription  # noqa: F401
 from app.models.quiz import QuizBattle, QuizBattleAnswer  # noqa: F401
+from app.models.audit import AuditLog  # noqa: F401
 
 

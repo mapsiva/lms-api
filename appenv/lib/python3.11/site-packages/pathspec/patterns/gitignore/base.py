@@ -54,9 +54,10 @@ class _GitIgnoreBasePattern(RegexPattern):
 		out_string = ''.join((f"\\{x}" if x in '\\[]!*#?' else x) for x in string)
 
 		if return_type is bytes:
-			return out_string.encode(_BYTES_ENCODING)
+			out_bytes = out_string.encode(_BYTES_ENCODING)
+			return out_bytes  # type: ignore[return-value]
 		else:
-			return out_string
+			return out_string  # type: ignore[return-value]
 
 	@staticmethod
 	def _translate_segment_glob(

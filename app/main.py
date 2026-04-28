@@ -129,6 +129,8 @@ from app.routers import community as _community_module  # noqa: E402
 from app.routers import internal as _internal_module  # noqa: E402
 from app.routers.admin import community as _admin_community_module  # noqa: E402
 from app.routers.admin import landing_pages as _admin_landing_module  # noqa: E402
+from app.routers.admin import audit as _admin_audit_module  # noqa: E402
+from app.routers.admin import gamification as _admin_gamification_module  # noqa: E402
 from app.routers import catalog as _catalog_module  # noqa: E402
 from app.routers import public as _public_module  # noqa: E402
 from app.routers import superadmin as _superadmin_module  # noqa: E402
@@ -158,6 +160,8 @@ app.include_router(_gamification_module.router)
 app.include_router(_community_module.router)
 app.include_router(_admin_community_module.router)
 app.include_router(_admin_landing_module.router)
+app.include_router(_admin_audit_module.router)
+app.include_router(_admin_gamification_module.router)
 app.include_router(_catalog_module.router)
 app.include_router(_public_module.router)
 app.include_router(_superadmin_module.router)

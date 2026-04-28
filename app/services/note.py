@@ -25,7 +25,7 @@ async def list_notes(
         .where(Note.user_id == user_id, Note.lesson_id == lesson_id)
         .order_by(Note.created_at.asc())
     )
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 async def create_note(

@@ -447,6 +447,16 @@ class ErrorCode:
         message="Meta não encontrada.",
         http_status=404,
     )
+    BADGE_NOT_FOUND = ErrorDefinition(
+        code="BADGE_NOT_FOUND",
+        message="Badge não encontrado.",
+        http_status=404,
+    )
+    SPECIAL_EVENT_NOT_FOUND = ErrorDefinition(
+        code="SPECIAL_EVENT_NOT_FOUND",
+        message="Evento especial não encontrado.",
+        http_status=404,
+    )
 
     # ─── Uploads ──────────────────────────────────────────────────────────────
     FILE_TOO_LARGE = ErrorDefinition(

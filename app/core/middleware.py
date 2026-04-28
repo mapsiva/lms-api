@@ -19,8 +19,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         host = request.headers.get("host", "").split(":")[0]
 
-        # Health check and superadmin bypass tenant resolution
-        if request.url.path == "/health" or request.url.path.startswith("/superadmin"):
+        _BYPASS_PREFIXES = ("/health", "/superadmin", "/docs", "/redoc", "/openapi.json")
+        if any(request.url.path == p or request.url.path.startswith(p) for p in _BYPASS_PREFIXES):
             return await call_next(request)
 
         tenant = await self._resolve_tenant(host)

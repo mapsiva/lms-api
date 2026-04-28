@@ -151,10 +151,10 @@ async def bulk_import_members(db: AsyncSession, company_id: uuid.UUID, tenant_id
             continue
 
         try:
-            result = await db.execute(
+            user_result = await db.execute(
                 select(User).where(User.tenant_id == tenant_id, User.email == email)
             )
-            existing = result.scalar_one_or_none()
+            existing = user_result.scalar_one_or_none()
             if existing:
                 user = existing
             else:
@@ -164,13 +164,13 @@ async def bulk_import_members(db: AsyncSession, company_id: uuid.UUID, tenant_id
                 )
                 created += 1
 
-            result = await db.execute(
+            member_result = await db.execute(
                 select(CompanyMember).where(
                     CompanyMember.company_id == company_id,
                     CompanyMember.user_id == user.id,
                 )
             )
-            if not result.scalar_one_or_none():
+            if not member_result.scalar_one_or_none():
                 member = CompanyMember(
                     company_id=company_id,
                     user_id=user.id,
@@ -186,10 +186,10 @@ async def bulk_import_members(db: AsyncSession, company_id: uuid.UUID, tenant_id
 
 
 async def invite_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid.UUID, body: dict[str, Any]):
-    result = await db.execute(
+    company_result = await db.execute(
         select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
     )
-    if not result.scalar_one_or_none():
+    if not company_result.scalar_one_or_none():
         raise AppError(ErrorCode.COMPANY_NOT_FOUND)
 
     email = body.get("email", "").strip()
@@ -197,22 +197,22 @@ async def invite_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid
     if not email:
         raise AppError(ErrorCode.EMAIL_REQUIRED)
 
-    result = await db.execute(
+    user_result = await db.execute(
         select(User).where(User.tenant_id == tenant_id, User.email == email)
     )
-    user = result.scalar_one_or_none()
+    user = user_result.scalar_one_or_none()
     if not user:
         user = await register_user(
             db, tenant_id, email, name, f"TempPass{uuid.uuid4().hex[:8]}!", role="student"
         )
 
-    result = await db.execute(
+    member_result = await db.execute(
         select(CompanyMember).where(
             CompanyMember.company_id == company_id,
             CompanyMember.user_id == user.id,
         )
     )
-    if not result.scalar_one_or_none():
+    if not member_result.scalar_one_or_none():
         member = CompanyMember(
             company_id=company_id,
             user_id=user.id,
@@ -226,19 +226,19 @@ async def invite_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid
 
 
 async def remove_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid.UUID, user_id: uuid.UUID):
-    result = await db.execute(
+    company_result = await db.execute(
         select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
     )
-    if not result.scalar_one_or_none():
+    if not company_result.scalar_one_or_none():
         raise AppError(ErrorCode.COMPANY_NOT_FOUND)
 
-    result = await db.execute(
+    member_result = await db.execute(
         select(CompanyMember).where(
             CompanyMember.company_id == company_id,
             CompanyMember.user_id == user_id,
         )
     )
-    member = result.scalar_one_or_none()
+    member = member_result.scalar_one_or_none()
     if not member:
         raise AppError(ErrorCode.MEMBER_NOT_FOUND)
     await db.delete(member)

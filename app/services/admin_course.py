@@ -70,6 +70,15 @@ async def list_courses(
     return list(result.scalars().all())
 
 
+async def get_course(
+    db: AsyncSession, tenant_id: uuid.UUID, course_id: uuid.UUID
+) -> Course:
+    course = await db.get(Course, course_id)
+    if course is None or course.tenant_id != tenant_id:
+        raise AppError(ErrorCode.COURSE_NOT_FOUND)
+    return course
+
+
 async def update_course(
     db: AsyncSession, tenant_id: uuid.UUID, course_id: uuid.UUID, body: CourseUpdate
 ) -> Course:

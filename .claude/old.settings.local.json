@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose *)",
+      "Bash(python3 *)",
+      "Bash(appenv/bin/pytest *)",
+      "Bash(wait)",
+      "Bash(/home/marcio/projects/lms/backend/appenv/bin/pip install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(appenv/bin/alembic init *)",
+      "Bash(docker exec mypostgres *)",
+      "Bash(appenv/bin/python *)",
+      "Bash(appenv/bin/alembic upgrade *)",
+      "Bash(appenv/bin/alembic downgrade *)"
+    ]
+  },
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "moonshotai/kimi-k2.6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "moonshotai/kimi-k2.6",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "moonshotai/kimi-k2.6"
+  }
+}

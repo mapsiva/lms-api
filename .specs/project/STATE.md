@@ -11,10 +11,10 @@
 ## Lessons
 - Services exist but are underused (only 3 files, 350 lines total). Need to create more.
 - Schemas already separated, but some endpoints still use primitive params inline.
+- `result` variable reuse across different SQLAlchemy query types causes mypy failures — use descriptive names (`user_result`, `member_result`).
 
 ## TODO
-- Remove HTTPException handler from main.py after all routers migrated (to prevent accidental reintroduction).
-- Audit error_codes.py completeness after migration.
+- None
 
 ## Preferences
 - Use Portuguese for user-facing error messages (already established).

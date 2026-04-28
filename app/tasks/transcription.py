@@ -3,8 +3,10 @@ import asyncio
 import logging
 import uuid
 
+from redis import Redis as SyncRedis
+
 from app.core.celery_app import celery_app
-from app.core.redis_client import get_redis
+from app.core.config import get_settings
 from app.integrations.assemblyai import AssemblyAIClient
 from app.integrations.anthropic import AnthropicClient
 
@@ -20,9 +22,13 @@ def transcribe_lesson_task(self, lesson_id: str, video_url: str) -> str:
         client = AssemblyAIClient()
         transcript_id = asyncio.run(client.submit_transcription(video_url))
 
-        redis = get_redis()
-        if redis:
-            redis.hset(PENDING_KEY, lesson_id, transcript_id)
+        settings = get_settings()
+        if settings.redis_url:
+            redis = SyncRedis.from_url(settings.redis_url, decode_responses=True)
+            try:
+                redis.hset(PENDING_KEY, lesson_id, transcript_id)
+            finally:
+                redis.close()
 
         logger.info("Submitted transcription for lesson=%s transcript_id=%s", lesson_id, transcript_id)
         return transcript_id

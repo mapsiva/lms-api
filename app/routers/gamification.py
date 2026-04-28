@@ -14,6 +14,7 @@ from app.schemas.gamification import (
     MyStatsResponse,
 )
 from app.services import gamification as gamification_service
+from app.services.hall_of_fame import compute_monthly_hall_of_fame
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -45,3 +46,13 @@ async def list_badges(
     db: AsyncSession = Depends(get_db),
 ):
     return await gamification_service.list_badges(db, tenant.id, _user.id)
+
+
+@router.get("/hall-of-fame")
+async def hall_of_fame(
+    company_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await compute_monthly_hall_of_fame(db, company_id, tenant.id)

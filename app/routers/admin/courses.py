@@ -49,6 +49,16 @@ async def list_courses(
     return await admin_course_service.list_courses(db, tenant.id)
 
 
+@router.get("/courses/{course_id}", response_model=CourseResponse)
+async def get_course(
+    course_id: uuid.UUID,
+    tenant=Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await admin_course_service.get_course(db, tenant.id, course_id)
+
+
 @router.patch("/courses/{course_id}", response_model=CourseResponse)
 async def update_course(
     course_id: uuid.UUID,

@@ -2,6 +2,8 @@
 
 import uuid
 
+from fastapi import HTTPException
+
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.integrations.r2 import upload_file
@@ -33,5 +35,8 @@ async def handle_upload(
         raise AppError(ErrorCode.UNSUPPORTED_FILE_TYPE)
 
     key = _build_key(prefix, tenant.id, ext)
-    url = await upload_file(file_content, key, ct)
+    try:
+        url = await upload_file(file_content, key, ct)
+    except (RuntimeError, NotImplementedError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return url

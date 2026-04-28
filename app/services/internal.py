@@ -45,10 +45,21 @@ async def process_transcription_callback(*, auth_header: str, body: dict) -> dic
         raise AppError(ErrorCode.NO_PENDING_LESSON)
 
     async for session in get_db():
+        from sqlalchemy import text
+
         lesson = await session.get(Lesson, uuid.UUID(lesson_id))
         if lesson is None:
             raise AppError(ErrorCode.LESSON_NOT_FOUND)
         lesson.transcript_text = full
+        # Flush so transcript_text is staged, then compute tsvector via DB function
+        await session.flush()
+        await session.execute(
+            text(
+                "UPDATE lessons SET transcript_tsv = to_tsvector('portuguese', :txt)"
+                " WHERE id = :lid"
+            ),
+            {"txt": full.get("full_text", ""), "lid": str(uuid.UUID(lesson_id))},
+        )
         await session.commit()
         break
 

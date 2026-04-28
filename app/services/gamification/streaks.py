@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.gamification import UserStreak
@@ -13,7 +14,8 @@ async def update_streak(
     company_id: uuid.UUID | None,
 ) -> dict:
     """Update streak on daily first activity. Returns {current, longest, shield_used, reset}."""
-    streak = await session.get(UserStreak, user_id)
+    result = await session.execute(select(UserStreak).where(UserStreak.user_id == user_id))
+    streak = result.scalar_one_or_none()
     today = datetime.now(timezone.utc).date()
 
     if streak is None:

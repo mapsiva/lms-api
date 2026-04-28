@@ -1,4 +1,4 @@
-#!/home/marcio/projects/lms/backend/appenv/bin/python3
+#!/home/marcio/projects/lms/backend/appenv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

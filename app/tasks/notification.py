@@ -23,7 +23,7 @@ def dispatch_broadcast_notification_task(
     body: str | None,
     notification_type: str,
 ) -> None:
-    """Dispatch a broadcast notification via Redis pub/sub and push."""
+    """Dispatch a broadcast notification via Redis pub/sub + Web Push."""
     db = get_sync_db()
     try:
         tid = uuid.UUID(tenant_id)
@@ -56,6 +56,9 @@ def dispatch_broadcast_notification_task(
                 except Exception:
                     logger.exception("Redis publish failed for user %s", uid)
 
+            # Web Push for each user
+            dispatch_push_notification_task.delay(uid, tenant_id, title, body, None)
+
         logger.info(
             "Broadcast notification dispatched notification=%s users=%d",
             notification_id,
@@ -68,3 +71,80 @@ def dispatch_broadcast_notification_task(
         db.close()
         if redis:
             redis.close()
+
+
+@celery_app.task(bind=True, max_retries=2)
+def dispatch_push_notification_task(
+    self,
+    user_id: str,
+    tenant_id: str,
+    title: str,
+    body: str | None = None,
+    action_url: str | None = None,
+) -> None:
+    """Send Web Push to all active subscriptions for a user."""
+    settings = get_settings()
+    if not settings.vapid_private_key:
+        logger.debug("VAPID not configured, skipping push for user=%s", user_id)
+        return
+
+    try:
+        from pywebpush import WebPushException, webpush  # type: ignore[import-untyped]
+    except ImportError:
+        logger.warning("pywebpush not installed, skipping push")
+        return
+
+    db = get_sync_db()
+    try:
+        from sqlalchemy import select
+
+        from app.models.push_subscription import PushSubscription
+
+        uid = uuid.UUID(user_id)
+        subs = db.execute(
+            select(PushSubscription).where(PushSubscription.user_id == uid)
+        ).scalars().all()
+
+        if not subs:
+            return
+
+        payload = json.dumps(
+            {"title": title, "body": body, "action_url": action_url}
+        )
+        vapid_claims = {"sub": f"mailto:{settings.vapid_claims_email}"}
+        stale_ids: list[uuid.UUID] = []
+
+        for sub in subs:
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": sub.endpoint,
+                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                    },
+                    data=payload,
+                    vapid_private_key=settings.vapid_private_key,
+                    vapid_claims=vapid_claims,
+                )
+            except WebPushException as exc:
+                status = getattr(exc.response, "status_code", None)
+                if status in (404, 410):
+                    # Subscription expired or unregistered — prune it
+                    stale_ids.append(sub.id)
+                    logger.info("Pruning stale push sub=%s status=%s", sub.id, status)
+                else:
+                    logger.warning("WebPush failed sub=%s: %s", sub.id, exc)
+
+        if stale_ids:
+            from sqlalchemy import delete
+
+            db.execute(
+                delete(PushSubscription).where(PushSubscription.id.in_(stale_ids))
+            )
+            db.commit()
+
+        logger.debug("Push sent user=%s subs=%d stale=%d", user_id, len(subs), len(stale_ids))
+    except Exception as exc:
+        logger.exception("dispatch_push_notification_task failed user=%s", user_id)
+        self.retry(countdown=30, exc=exc)
+    finally:
+        db.close()

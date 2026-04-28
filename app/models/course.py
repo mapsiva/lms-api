@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -13,7 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -115,6 +116,7 @@ class Lesson(Base):
     drip_value: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Transcript / AI
     transcript_text: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    transcript_tsv: Mapped[Any | None] = mapped_column(TSVECTOR, nullable=True)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

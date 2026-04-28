@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import Text, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.error_codes import ErrorCode
@@ -313,23 +313,29 @@ async def search_course_transcripts(
     if not enrolled:
         raise AppError(ErrorCode.NOT_ENROLLED)
 
+    tsquery = func.plainto_tsquery("portuguese", q)
+    snippet_expr = func.ts_headline(
+        "portuguese",
+        func.coalesce(Lesson.transcript_text["full_text"].as_string(), ""),
+        tsquery,
+        "MaxWords=35, MinWords=15, StartSel=<mark>, StopSel=</mark>",
+    )
+
     result = await db.execute(
-        select(Lesson, Module.title.label("module_title"))
+        select(
+            Lesson,
+            Module.title.label("module_title"),
+            snippet_expr.label("snippet"),
+            func.ts_rank(Lesson.transcript_tsv, tsquery).label("rank"),
+        )
         .join(Module, Module.id == Lesson.module_id)
         .where(
             Module.course_id == course_id,
             Lesson.tenant_id == tenant_id,
-            Lesson.transcript_text.isnot(None),
-            func.to_tsvector("portuguese", func.cast(Lesson.transcript_text, Text)).op("@@")(
-                func.plainto_tsquery("portuguese", q)
-            ),
+            Lesson.transcript_tsv.isnot(None),
+            Lesson.transcript_tsv.op("@@")(tsquery),
         )
-        .order_by(
-            func.ts_rank(
-                func.to_tsvector("portuguese", func.cast(Lesson.transcript_text, Text)),
-                func.plainto_tsquery("portuguese", q),
-            ).desc()
-        )
+        .order_by(func.ts_rank(Lesson.transcript_tsv, tsquery).desc())
         .limit(20)
     )
     rows = result.all()
@@ -338,7 +344,7 @@ async def search_course_transcripts(
             lesson_id=row.Lesson.id,
             lesson_title=row.Lesson.title,
             module_title=row.module_title,
-            snippet=None,
+            snippet=row.snippet,
         )
         for row in rows
     ]

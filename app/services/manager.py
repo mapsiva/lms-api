@@ -13,7 +13,6 @@ from app.schemas.manager import (
     GoalItem,
     GoalListResponse,
     ManagerDashboardResponse,
-    ManagerReportResponse,
     MemberItem,
     MemberListResponse,
 )
@@ -147,12 +146,22 @@ async def send_goal_reminder(
 async def manager_report(
     db: AsyncSession,
     company_id: uuid.UUID,
-) -> ManagerReportResponse:
+) -> object:
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+
     result = await db.execute(
         select(CompanyMember).where(CompanyMember.company_id == company_id)
     )
     members = result.scalars().all()
-    return ManagerReportResponse(
-        member_count=len(members),
-        company_id=str(company_id),
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["company_id", "member_count"])
+    writer.writerow([str(company_id), len(members)])
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=report-{company_id}.csv"},
     )

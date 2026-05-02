@@ -117,6 +117,7 @@ from app.routers.admin import companies as _admin_companies_module  # noqa: E402
 from app.routers.admin import email as _admin_email_module  # noqa: E402
 from app.routers.admin import enrollments as _admin_enrollments_module  # noqa: E402
 from app.routers.admin import dashboard as _admin_dashboard_module  # noqa: E402
+from app.routers.admin import products as _admin_products_module  # noqa: E402
 from app.routers.admin import menu as _admin_menu_module  # noqa: E402
 from app.routers.manager import dashboard as _manager_module  # noqa: E402
 from app.routers import courses as _courses_module  # noqa: E402
@@ -148,6 +149,8 @@ app.include_router(_admin_webhooks_module.router)
 app.include_router(_admin_companies_module.router)
 app.include_router(_admin_enrollments_module.router)
 app.include_router(_admin_dashboard_module.router)
+app.include_router(_admin_dashboard_module.analytics_router)
+app.include_router(_admin_products_module.router)
 app.include_router(_admin_menu_module.router)
 app.include_router(_admin_email_module.router)
 app.include_router(_manager_module.router)

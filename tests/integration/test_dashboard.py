@@ -7,10 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
-from app.models.company import Company
 from app.models.course import Course
-from app.models.enrollment import Enrollment
-from app.models.product import Product
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.auth import register_user
@@ -93,3 +90,16 @@ async def test_dashboard_revenue(admin_client, tenant, db_session):
     data = resp.json()
     assert "total_revenue" in data
     assert isinstance(data["total_revenue"], float)
+
+
+@pytest.mark.asyncio
+async def test_admin_analytics_aliases(admin_client):
+    for path, key in [
+        ("/admin/analytics/engagement", "total_completions"),
+        ("/admin/analytics/courses", "by_status"),
+        ("/admin/analytics/community", "total_posts"),
+        ("/admin/analytics/revenue", "total_revenue"),
+    ]:
+        resp = await admin_client.get(path)
+        assert resp.status_code == 200
+        assert key in resp.json()

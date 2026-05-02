@@ -63,3 +63,16 @@ class LandingPageAnalytics(BaseModel):
     views: int
     leads: int
     conversion_rate: float
+
+
+class LandingPageLinkCreate(BaseModel):
+    utm_source: str | None = None
+    utm_medium: str | None = None
+    utm_campaign: str | None = None
+    utm_term: str | None = None
+    utm_content: str | None = None
+    base_url: str | None = None
+
+
+class LandingPageLinkResponse(BaseModel):
+    url: str

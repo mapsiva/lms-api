@@ -16,10 +16,10 @@ alembic upgrade head
 uvicorn app.main:app --reload
 
 # Tests (always use real DB, no mocks)
-pytest tests/integration/         # integration tests
-pytest tests/unit/                # unit tests
-pytest tests/ -k "test_name"      # single test
-pytest tests/ -x                  # stop on first failure
+./appenv/bin/pytest tests/integration/         # integration tests
+./appenv/bin/pytest tests/unit/                # unit tests
+./appenv/bin/pytest tests/ -k "test_name"      # single test
+./appenv/bin/pytest tests/ -x                  # stop on first failure
 
 # Migrations
 alembic revision --autogenerate -m "description"
@@ -30,7 +30,7 @@ alembic downgrade -1
 celery -A app.tasks worker --loglevel=info
 
 # Linting
-ruff check app/
+./appenv/bin/ruff check app/
 mypy app/
 ```
 
@@ -134,6 +134,12 @@ XP events are append-only (`xp_events` table). Users never lose XP. Rankings fil
 
 ## Testing policy
 Tests use a real PostgreSQL database — no DB mocks. Isolation tests for multi-tenancy are mandatory. Use `pytest-asyncio` with `httpx.AsyncClient` for endpoint tests.
+
+When running inside a restricted sandbox, integration tests may block in the `db_engine` fixture if PostgreSQL/Redis at `localhost` are not reachable. In that case, run targeted `ruff`, `compileall`, and `pytest --collect-only`, then rerun the full suite once Docker services are available.
+
+## MVP backend state
+
+The MVP backend now includes admin product management, company member updates, company dashboard, MVP analytics aliases, landing page UTM link generation, public company invite acceptance, and CSV manager reports. Keep frontend API docs aligned with these actual routes instead of treating them as backlog.
 
 ## Environment variables
 See `PRD.md` section 17 or `.env.example` for all required variables. Key ones:

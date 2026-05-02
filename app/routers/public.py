@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_tenant
 from app.models.tenant import Tenant
 from app.schemas.public import (
+    InviteAcceptRequest,
+    InviteAcceptResponse,
     LandingPageAnalyticsResponse,
     LandingPageDetailResponse,
     LeadCaptureResponse,
@@ -67,4 +69,25 @@ async def landing_page_analytics(
         views=total_views,
         leads=total_leads,
         conversion_rate=conversion_rate,
+    )
+
+
+@router.post("/invites/{token}/accept", response_model=InviteAcceptResponse)
+async def accept_company_invite(
+    token: str,
+    body: InviteAcceptRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await public_service.accept_company_invite(
+        db, tenant.id, token, body.model_dump(exclude_unset=True)
+    )
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    return InviteAcceptResponse(
+        access_token=result["access_token"],
+        expires_in=settings.access_token_expire_minutes * 60,
+        user_id=result["user_id"],
+        company_id=result["company_id"],
     )

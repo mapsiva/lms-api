@@ -14,6 +14,8 @@ from app.schemas.landing_page import (
     LandingPageDetail,
     LandingPageIdResponse,
     LandingPageListItem,
+    LandingPageLinkCreate,
+    LandingPageLinkResponse,
     LandingPageUpdate,
 )
 from app.services import landing_page as landing_page_service
@@ -80,3 +82,16 @@ async def landing_page_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     return await landing_page_service.get_landing_page_analytics(db, tenant.id, page_id)
+
+
+@router.post("/{page_id}/links", response_model=LandingPageLinkResponse)
+async def generate_landing_page_link(
+    page_id: uuid.UUID,
+    body: LandingPageLinkCreate,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await landing_page_service.generate_landing_page_link(
+        db, tenant.id, page_id, body
+    )

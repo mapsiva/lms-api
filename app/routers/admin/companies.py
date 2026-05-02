@@ -99,6 +99,18 @@ async def invite_member(
     return await company_service.invite_member(db, company_id, tenant.id, body)
 
 
+@router.patch("/{company_id}/members/{user_id}")
+async def update_member(
+    company_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: dict[str, Any],
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await company_service.update_member(db, company_id, tenant.id, user_id, body)
+
+
 @router.delete("/{company_id}/members/{user_id}", status_code=204)
 async def remove_member(
     company_id: uuid.UUID,
@@ -121,3 +133,13 @@ async def company_report(
     db: AsyncSession = Depends(get_db),
 ):
     return await company_service.company_report(db, company_id, tenant.id)
+
+
+@router.get("/{company_id}/dashboard")
+async def company_dashboard(
+    company_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await company_service.company_dashboard(db, company_id, tenant.id)

@@ -139,6 +139,59 @@ async def test_invite_member(admin_client, tenant, db_session):
     assert resp.status_code == 200
     data = resp.json()
     assert data["email"] == "new@member.com"
+    assert data["invite_token"]
+    assert data["invite_url"].startswith("/invites/")
+
+    accept_resp = await admin_client.post(
+        f"/invites/{data['invite_token']}/accept",
+        json={"password": "new-password123", "name": "Accepted Member"},
+    )
+    assert accept_resp.status_code == 200
+    accept_data = accept_resp.json()
+    assert accept_data["access_token"]
+    assert accept_data["company_id"] == str(c.id)
+
+
+@pytest.mark.asyncio
+async def test_update_member(admin_client, tenant, db_session):
+    c = Company(tenant_id=tenant.id, legal_name="Update Member Co", cnpj="77777777000177")
+    db_session.add(c)
+    await db_session.commit()
+    await db_session.refresh(c)
+
+    u = await register_user(db_session, tenant.id, "update@member.com", "Update", "password123", role="student")
+    cm = CompanyMember(company_id=c.id, user_id=u.id, team="Old", job_role="Analyst")
+    db_session.add(cm)
+    await db_session.commit()
+
+    resp = await admin_client.patch(
+        f"/admin/companies/{c.id}/members/{u.id}",
+        json={"team": "New", "job_role": "Lead", "is_active": False},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["team"] == "New"
+    assert data["job_role"] == "Lead"
+    assert data["is_active"] is False
+
+
+@pytest.mark.asyncio
+async def test_company_dashboard(admin_client, tenant, db_session):
+    c = Company(tenant_id=tenant.id, legal_name="Dashboard Co", cnpj="88888888000188")
+    db_session.add(c)
+    await db_session.commit()
+    await db_session.refresh(c)
+
+    u = await register_user(db_session, tenant.id, "dash@member.com", "Dash", "password123", role="student", company_id=c.id)
+    cm = CompanyMember(company_id=c.id, user_id=u.id)
+    db_session.add(cm)
+    await db_session.commit()
+
+    resp = await admin_client.get(f"/admin/companies/{c.id}/dashboard")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["company_id"] == str(c.id)
+    assert data["member_count"] >= 1
 
 
 @pytest.mark.asyncio

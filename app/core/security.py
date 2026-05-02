@@ -44,6 +44,30 @@ def create_access_token(
     )
 
 
+def create_invite_token(user_id: str, tenant_id: str, company_id: str) -> str:
+    settings = get_settings()
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    payload: dict[str, Any] = {
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "company_id": company_id,
+        "type": "company_invite",
+        "exp": expire,
+    }
+    return jwt.encode(
+        payload,
+        settings.jwt_secret_key.get_secret_value(),
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_invite_token(token: str) -> dict[str, Any]:
+    payload = decode_token(token)
+    if payload.get("type") != "company_invite":
+        raise AppError(ErrorCode.INVALID_TOKEN)
+    return payload
+
+
 def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:

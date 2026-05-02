@@ -109,6 +109,7 @@ async def test_manager_list_goals(manager_client, company, db_session):
 async def test_manager_report(manager_client):
     resp = await manager_client.get("/manager/report")
     assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
 
 
 @pytest.mark.asyncio

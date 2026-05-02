@@ -25,3 +25,15 @@ class LandingPageAnalyticsResponse(BaseModel):
     views: int
     leads: int
     conversion_rate: float
+
+
+class InviteAcceptRequest(BaseModel):
+    password: str | None = None
+    name: str | None = None
+
+
+class InviteAcceptResponse(BaseModel):
+    access_token: str
+    expires_in: int
+    user_id: str
+    company_id: str

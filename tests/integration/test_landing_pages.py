@@ -101,6 +101,22 @@ async def test_create_and_get_landing_page(
     assert data["views"] >= 1
     assert data["leads"] >= 1
 
+    resp = await client_with_tenant.post(
+        f"/admin/landing-pages/{page_id}/links",
+        json={
+            "base_url": "https://school.example.com",
+            "utm_source": "newsletter",
+            "utm_medium": "email",
+            "utm_campaign": "launch",
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["url"] == (
+        "https://school.example.com/p/launch"
+        "?utm_source=newsletter&utm_medium=email&utm_campaign=launch"
+    )
+
 
 @pytest.mark.asyncio
 async def test_public_page_not_found_for_draft(

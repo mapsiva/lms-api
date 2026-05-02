@@ -5,12 +5,15 @@ import uuid
 from typing import Any
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.core.security import create_invite_token
 from app.models.company import Company, CompanyMember
+from app.models.enrollment import Enrollment
+from app.models.progress import LessonProgress
 from app.models.user import User
 from app.services.auth import register_user
 
@@ -222,7 +225,50 @@ async def invite_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid
         db.add(member)
         await db.commit()
 
-    return {"user_id": str(user.id), "email": user.email}
+    token = create_invite_token(str(user.id), str(tenant_id), str(company_id))
+    return {
+        "user_id": str(user.id),
+        "email": user.email,
+        "invite_token": token,
+        "invite_url": f"/invites/{token}/accept",
+    }
+
+
+async def update_member(
+    db: AsyncSession,
+    company_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: dict[str, Any],
+):
+    company_result = await db.execute(
+        select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
+    )
+    if not company_result.scalar_one_or_none():
+        raise AppError(ErrorCode.COMPANY_NOT_FOUND)
+
+    member_result = await db.execute(
+        select(CompanyMember).where(
+            CompanyMember.company_id == company_id,
+            CompanyMember.user_id == user_id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if not member:
+        raise AppError(ErrorCode.MEMBER_NOT_FOUND)
+
+    for field in ("team", "job_role", "is_active"):
+        if field in body:
+            setattr(member, field, body[field])
+
+    await db.commit()
+    await db.refresh(member)
+    return {
+        "user_id": str(member.user_id),
+        "team": member.team,
+        "job_role": member.job_role,
+        "is_active": member.is_active,
+    }
 
 
 async def remove_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid.UUID, user_id: uuid.UUID):
@@ -273,3 +319,47 @@ async def company_report(db: AsyncSession, company_id: uuid.UUID, tenant_id: uui
             "Content-Disposition": f"attachment; filename=report-{company_id}.csv"
         },
     )
+
+
+async def company_dashboard(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid.UUID):
+    result = await db.execute(
+        select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
+    )
+    company = result.scalar_one_or_none()
+    if not company:
+        raise AppError(ErrorCode.COMPANY_NOT_FOUND)
+
+    member_count = await db.scalar(
+        select(func.count(CompanyMember.id)).where(CompanyMember.company_id == company_id)
+    )
+    active_member_count = await db.scalar(
+        select(func.count(CompanyMember.id)).where(
+            CompanyMember.company_id == company_id,
+            CompanyMember.is_active.is_(True),
+        )
+    )
+    active_enrollments = await db.scalar(
+        select(func.count(Enrollment.id)).where(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.company_id == company_id,
+            Enrollment.status == "active",
+        )
+    )
+    completed_lessons = await db.scalar(
+        select(func.count(LessonProgress.id))
+        .join(User, User.id == LessonProgress.user_id)
+        .where(
+            User.tenant_id == tenant_id,
+            User.company_id == company_id,
+            LessonProgress.completed_at.isnot(None),
+        )
+    )
+
+    return {
+        "company_id": str(company.id),
+        "legal_name": company.legal_name,
+        "member_count": member_count or 0,
+        "active_member_count": active_member_count or 0,
+        "active_enrollments": active_enrollments or 0,
+        "completed_lessons": completed_lessons or 0,
+    }

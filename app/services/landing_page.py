@@ -1,5 +1,6 @@
 """Landing page business logic."""
 import uuid
+from urllib.parse import urlencode
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,8 @@ from app.schemas.landing_page import (
     LandingPageCreate,
     LandingPageDetail,
     LandingPageIdResponse,
+    LandingPageLinkCreate,
+    LandingPageLinkResponse,
     LandingPageListItem,
     LandingPageUpdate,
 )
@@ -147,3 +150,24 @@ async def get_landing_page_analytics(
         leads=total_leads,
         conversion_rate=round(total_leads / total_views, 4) if total_views else 0.0,
     )
+
+
+async def generate_landing_page_link(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    page_id: uuid.UUID,
+    data: LandingPageLinkCreate,
+) -> LandingPageLinkResponse:
+    page = await db.get(LandingPage, page_id)
+    if not page or page.tenant_id != tenant_id:
+        raise AppError(ErrorCode.LANDING_PAGE_NOT_FOUND)
+
+    base_url = (data.base_url or "").rstrip("/")
+    path = f"/p/{page.slug}"
+    params = {
+        key: value
+        for key, value in data.model_dump(exclude={"base_url"}).items()
+        if value is not None
+    }
+    query = f"?{urlencode(params)}" if params else ""
+    return LandingPageLinkResponse(url=f"{base_url}{path}{query}")

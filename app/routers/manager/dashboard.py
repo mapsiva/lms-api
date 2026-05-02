@@ -13,7 +13,6 @@ from app.schemas.manager import (
     GoalListResponse,
     GoalReminderResponse,
     ManagerDashboardResponse,
-    ManagerReportResponse,
     MemberListResponse,
 )
 from app.services import manager as manager_service
@@ -75,7 +74,7 @@ async def send_goal_reminder(
     return GoalReminderResponse(status="dispatched")
 
 
-@router.get("/report", response_model=ManagerReportResponse)
+@router.get("/report")
 async def manager_report(
     tenant: Tenant = Depends(get_current_tenant),
     user: User = Depends(get_current_user),

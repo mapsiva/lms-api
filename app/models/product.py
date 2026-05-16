@@ -65,3 +65,19 @@ class ProductCourse(Base):
         UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class ProductSpace(Base):
+    __tablename__ = "product_spaces"
+    __table_args__ = (
+        UniqueConstraint("product_id", "space_id", name="uq_product_spaces"),
+        Index("ix_product_spaces_space", "space_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    space_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False
+    )

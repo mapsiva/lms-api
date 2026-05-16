@@ -312,6 +312,11 @@ class ErrorCode:
         message="Curtida não encontrada.",
         http_status=404,
     )
+    SPACE_ACCESS_REQUIRED = ErrorDefinition(
+        code="SPACE_ACCESS_REQUIRED",
+        message="Adquira o produto para acessar este conteúdo.",
+        http_status=403,
+    )
 
     # ─── Quiz ─────────────────────────────────────────────────────────────────
     OPPONENT_NOT_FOUND = ErrorDefinition(

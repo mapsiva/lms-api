@@ -11,6 +11,7 @@ from app.schemas.product import (
     ProductCreate,
     ProductListResponse,
     ProductResponse,
+    ProductSpaceItem,
     ProductStatusUpdate,
     ProductUpdate,
 )
@@ -61,3 +62,35 @@ async def update_product_status(
     return await product_service.update_product_status(
         db, tenant.id, product_id, body.status
     )
+
+
+@router.get("/{product_id}/spaces", response_model=list[ProductSpaceItem])
+async def list_product_spaces(
+    product_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await product_service.list_product_spaces(db, tenant.id, product_id)
+
+
+@router.post("/{product_id}/spaces", status_code=201, response_model=list[ProductSpaceItem])
+async def add_product_space(
+    product_id: uuid.UUID,
+    body: ProductSpaceItem,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await product_service.add_product_space(db, tenant.id, product_id, body.space_id)
+
+
+@router.delete("/{product_id}/spaces/{space_id}", status_code=204)
+async def remove_product_space(
+    product_id: uuid.UUID,
+    space_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await product_service.remove_product_space(db, tenant.id, product_id, space_id)

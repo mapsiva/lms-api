@@ -10,6 +10,10 @@ class ProductCourseInput(BaseModel):
     order_index: int = 0
 
 
+class ProductSpaceInput(BaseModel):
+    space_id: uuid.UUID
+
+
 class ProductCreate(BaseModel):
     type: str = Field(pattern="^(course|trail|mentorship|bundle)$")
     title: str = Field(min_length=1, max_length=500)
@@ -21,6 +25,7 @@ class ProductCreate(BaseModel):
     access_days: int | None = None
     is_free: bool = False
     courses: list[ProductCourseInput] = Field(default_factory=list)
+    spaces: list[ProductSpaceInput] = Field(default_factory=list)
 
 
 class ProductUpdate(BaseModel):
@@ -33,6 +38,7 @@ class ProductUpdate(BaseModel):
     access_days: int | None = None
     is_free: bool | None = None
     courses: list[ProductCourseInput] | None = None
+    spaces: list[ProductSpaceInput] | None = None
 
 
 class ProductStatusUpdate(BaseModel):
@@ -42,6 +48,10 @@ class ProductStatusUpdate(BaseModel):
 class ProductCourseItem(BaseModel):
     course_id: uuid.UUID
     order_index: int
+
+
+class ProductSpaceItem(BaseModel):
+    space_id: uuid.UUID
 
 
 class ProductResponse(BaseModel):
@@ -58,6 +68,7 @@ class ProductResponse(BaseModel):
     access_days: int | None = None
     is_free: bool
     courses: list[ProductCourseItem] = Field(default_factory=list)
+    spaces: list[ProductSpaceItem] = Field(default_factory=list)
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

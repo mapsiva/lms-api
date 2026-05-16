@@ -1,6 +1,7 @@
 """Company business logic."""
 import csv
 import io
+import logging
 import uuid
 from typing import Any
 
@@ -16,6 +17,16 @@ from app.models.enrollment import Enrollment
 from app.models.progress import LessonProgress
 from app.models.user import User
 from app.services.auth import register_user
+
+logger = logging.getLogger(__name__)
+
+
+def _frontend_url(path: str) -> str:
+    from app.core.config import get_settings
+
+    base_url = get_settings().frontend_url.rstrip("/")
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    return f"{base_url}{normalized_path}" if base_url else normalized_path
 
 
 async def list_companies(db: AsyncSession, tenant_id: uuid.UUID, status: str | None):
@@ -134,7 +145,8 @@ async def bulk_import_members(db: AsyncSession, company_id: uuid.UUID, tenant_id
     result = await db.execute(
         select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
     )
-    if not result.scalar_one_or_none():
+    company = result.scalar_one_or_none()
+    if not company:
         raise AppError(ErrorCode.COMPANY_NOT_FOUND)
 
     content = await file.read()
@@ -161,11 +173,28 @@ async def bulk_import_members(db: AsyncSession, company_id: uuid.UUID, tenant_id
             if existing:
                 user = existing
             else:
+                temporary_password = f"TempPass{uuid.uuid4().hex[:8]}!"
                 user = await register_user(
-                    db, tenant_id, email, name, f"TempPass{uuid.uuid4().hex[:8]}!",
+                    db, tenant_id, email, name, temporary_password,
                     role="student",
                 )
                 created += 1
+                try:
+                    from app.tasks.email import send_system_email_task
+
+                    send_system_email_task.delay(
+                        email,
+                        "company.bulk_import_member_welcome",
+                        {
+                            "app_name": "LMS",
+                            "company_name": company.trade_name or company.legal_name,
+                            "user_name": user.name,
+                            "temporary_password": temporary_password,
+                            "login_url": _frontend_url("/login"),
+                        },
+                    )
+                except Exception:
+                    logger.exception("Failed to queue bulk import welcome email to=%s", email)
 
             member_result = await db.execute(
                 select(CompanyMember).where(
@@ -192,7 +221,8 @@ async def invite_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid
     company_result = await db.execute(
         select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
     )
-    if not company_result.scalar_one_or_none():
+    company = company_result.scalar_one_or_none()
+    if not company:
         raise AppError(ErrorCode.COMPANY_NOT_FOUND)
 
     email = body.get("email", "").strip()
@@ -226,6 +256,19 @@ async def invite_member(db: AsyncSession, company_id: uuid.UUID, tenant_id: uuid
         await db.commit()
 
     token = create_invite_token(str(user.id), str(tenant_id), str(company_id))
+    invite_url = _frontend_url(f"/invites/{token}/accept")
+    try:
+        from app.tasks.email import send_company_invite_email
+
+        send_company_invite_email.delay(
+            email=user.email,
+            invite_url=invite_url,
+            company_name=company.trade_name or company.legal_name,
+            user_name=user.name,
+            app_name="LMS",
+        )
+    except Exception:
+        logger.exception("Failed to queue company invite email to=%s", user.email)
     return {
         "user_id": str(user.id),
         "email": user.email,

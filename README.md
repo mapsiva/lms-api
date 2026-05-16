@@ -37,8 +37,18 @@ Use o virtualenv local:
 source appenv/bin/activate
 docker-compose up -d
 alembic upgrade head
+python scripts/seed.py
 uvicorn app.main:app --reload
 ```
+
+O seed cria o tenant local `localhost`/`acme.localhost` e usuários para testar o frontend:
+
+- `admin@acmelearning.com`
+- `manager@acmelearning.com`
+- `aluno@acmelearning.com`
+- `aluno2@acmelearning.com`
+
+Senha padrão: `Senha123!`
 
 ## Testes
 

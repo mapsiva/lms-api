@@ -1,8 +1,6 @@
 """Unit tests for email Celery tasks."""
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.tasks.email import _append_tracking_pixel, BATCH_SIZE
 
 
@@ -39,6 +37,30 @@ def test_send_transactional_email_task(mock_settings, mock_send_email):
     call = mock_send_email.call_args
     assert call.args[0] == "user@example.com"
     assert "open.gif" in call.args[2]
+
+
+@patch("app.tasks.email.send_email")
+def test_send_system_email_task(mock_send_email):
+    mock_send_email.return_value = "msg-456"
+
+    from app.tasks.email import send_system_email_task
+
+    result = send_system_email_task.run(
+        to="user@example.com",
+        template_key="company.invite_member",
+        context={
+            "app_name": "Acme",
+            "company_name": "Acme Comercial",
+            "user_name": "User",
+            "invite_url": "https://app.example.com/invites/token/accept",
+        },
+    )
+
+    assert result == "msg-456"
+    call = mock_send_email.call_args
+    assert call.args[0] == "user@example.com"
+    assert "Acme Comercial" in call.args[1]
+    assert "Aceitar convite" in call.args[2]
 
 
 @patch("app.tasks.email.send_email")

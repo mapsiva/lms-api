@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
-from app.models.email import EmailAudience, EmailCampaign, EmailAutomation, EmailSend, EmailTemplate
+from app.models.email import EmailAudience, EmailCampaign, EmailSend, EmailTemplate
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.auth import register_user
@@ -100,6 +100,36 @@ async def test_create_template(admin_client, tenant):
     data = resp.json()
     assert data["name"] == "Welcome"
     assert data["subject"] == "Bem-vindo"
+
+
+@pytest.mark.asyncio
+async def test_list_system_templates(admin_client):
+    resp = await admin_client.get("/admin/email/system-templates")
+    assert resp.status_code == 200
+    data = resp.json()
+    keys = {item["key"] for item in data}
+    assert "auth.magic_link" in keys
+    assert "company.invite_member" in keys
+    assert "webhook.processing_failed" in keys
+
+
+@pytest.mark.asyncio
+async def test_preview_system_template(admin_client):
+    resp = await admin_client.post(
+        "/admin/email/system-templates/company.invite_member/preview",
+        json={
+            "context": {
+                "app_name": "Acme",
+                "company_name": "Acme Comercial",
+                "user_name": "Member",
+                "invite_url": "https://app.example.com/invites/token/accept",
+            }
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["key"] == "company.invite_member"
+    assert "Acme Comercial" in data["subject"]
 
 
 @pytest.mark.asyncio

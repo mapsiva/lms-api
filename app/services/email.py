@@ -18,8 +18,15 @@ from app.schemas.email import (
     CampaignCreate,
     CampaignResponse,
     CampaignSendResponse,
+    SystemTemplatePreviewResponse,
+    SystemTemplateResponse,
     TemplateCreate,
     TemplateResponse,
+)
+from app.services.system_email import (
+    get_system_email_template,
+    list_system_email_templates,
+    render_system_email_template,
 )
 
 
@@ -76,6 +83,41 @@ async def create_template(
     await db.commit()
     await db.refresh(template)
     return TemplateResponse.model_validate(template)
+
+
+async def list_system_templates() -> list[SystemTemplateResponse]:
+    return [
+        SystemTemplateResponse(
+            key=template.key.value,
+            name=template.name,
+            description=template.description,
+            category=template.category,
+            subject=template.subject,
+            html_body=template.html_body,
+            required_variables=list(template.required_variables),
+            sample_context=template.sample_context,
+        )
+        for template in list_system_email_templates()
+    ]
+
+
+async def preview_system_template(
+    template_key: str,
+    context: dict,
+) -> SystemTemplatePreviewResponse:
+    try:
+        template = get_system_email_template(template_key)
+        rendered = render_system_email_template(
+            template_key,
+            context or template.sample_context,
+        )
+    except ValueError as exc:
+        raise AppError(ErrorCode.INVALID_REQUEST, message=str(exc))
+    return SystemTemplatePreviewResponse(
+        key=rendered.key,
+        subject=rendered.subject,
+        html_body=rendered.html_body,
+    )
 
 
 async def list_campaigns(

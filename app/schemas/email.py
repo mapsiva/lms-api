@@ -44,6 +44,27 @@ class TemplateResponse(BaseModel):
     created_at: datetime
 
 
+class SystemTemplateResponse(BaseModel):
+    key: str
+    name: str
+    description: str
+    category: str
+    subject: str
+    html_body: str
+    required_variables: list[str]
+    sample_context: dict[str, Any]
+
+
+class SystemTemplatePreviewRequest(BaseModel):
+    context: dict[str, Any] | None = None
+
+
+class SystemTemplatePreviewResponse(BaseModel):
+    key: str
+    subject: str
+    html_body: str
+
+
 # ---------------------------------------------------------------------------
 # Campaigns
 # ---------------------------------------------------------------------------

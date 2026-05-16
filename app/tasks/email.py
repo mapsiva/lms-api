@@ -5,6 +5,10 @@ import uuid
 from app.core.celery_app import celery_app
 from app.core.config import get_settings
 from app.integrations.resend import send_email
+from app.services.system_email import (
+    SystemEmailTemplateKey,
+    render_system_email_template,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,30 @@ def send_transactional_email_task(
     return ""
 
 
+def _frontend_url(path: str) -> str:
+    base_url = get_settings().frontend_url.rstrip("/")
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    return f"{base_url}{normalized_path}" if base_url else normalized_path
+
+
+@celery_app.task(bind=True, max_retries=3)
+def send_system_email_task(
+    self,
+    to: str,
+    template_key: str,
+    context: dict,
+    from_email: str | None = None,
+) -> str:
+    """Render and send a mapped system email by template key."""
+    try:
+        rendered = render_system_email_template(template_key, context)
+        return send_email(to, rendered.subject, rendered.html_body, from_email)
+    except Exception as exc:
+        logger.exception("System email failed to=%s template=%s", to, template_key)
+        self.retry(countdown=60, exc=exc)
+    return ""
+
+
 @celery_app.task(bind=True, max_retries=3)
 def send_campaign_batch_task(
     self,
@@ -73,9 +101,19 @@ def send_magic_link_email(
     """Send magic link email."""
     try:
         settings = get_settings()
-        magic_link_url = f"{settings.frontend_url}/magic-link/verify?token={token}"
-        html = f'<p>Click <a href="{magic_link_url}">here</a> to log in.</p>'
-        send_email(email, "Your Magic Link", html)
+        magic_link_url = _frontend_url(f"/magic-link/verify?token={token}")
+        context = {
+            "app_name": "LMS",
+            "user_name": email.split("@")[0],
+            "magic_link_url": magic_link_url,
+            "expires_minutes": settings.magic_link_expire_minutes,
+            "tenant_id": tenant_id,
+        }
+        rendered = render_system_email_template(
+            SystemEmailTemplateKey.AUTH_MAGIC_LINK,
+            context,
+        )
+        send_email(email, rendered.subject, rendered.html_body)
         logger.info("Magic link sent to %s", email)
     except Exception as exc:
         logger.exception("Magic link email failed to=%s", email)
@@ -91,13 +129,48 @@ def send_password_reset_email(
 ) -> None:
     """Send password reset email."""
     try:
-        settings = get_settings()
-        reset_url = f"{settings.frontend_url}/reset-password?token={token}"
-        html = f'<p>Click <a href="{reset_url}">here</a> to reset your password.</p>'
-        send_email(email, "Password Reset", html)
+        reset_url = _frontend_url(f"/reset-password?token={token}")
+        context = {
+            "app_name": "LMS",
+            "user_name": email.split("@")[0],
+            "reset_url": reset_url,
+            "tenant_id": tenant_id,
+        }
+        rendered = render_system_email_template(
+            SystemEmailTemplateKey.AUTH_PASSWORD_RESET,
+            context,
+        )
+        send_email(email, rendered.subject, rendered.html_body)
         logger.info("Password reset sent to %s", email)
     except Exception as exc:
         logger.exception("Password reset email failed to=%s", email)
+        self.retry(countdown=60, exc=exc)
+
+
+@celery_app.task(bind=True, max_retries=3)
+def send_company_invite_email(
+    self,
+    email: str,
+    invite_url: str,
+    company_name: str,
+    user_name: str,
+    app_name: str = "LMS",
+) -> None:
+    """Send company invite email."""
+    try:
+        rendered = render_system_email_template(
+            SystemEmailTemplateKey.COMPANY_INVITE_MEMBER,
+            {
+                "app_name": app_name,
+                "company_name": company_name,
+                "user_name": user_name,
+                "invite_url": invite_url,
+            },
+        )
+        send_email(email, rendered.subject, rendered.html_body)
+        logger.info("Company invite sent to %s", email)
+    except Exception as exc:
+        logger.exception("Company invite email failed to=%s", email)
         self.retry(countdown=60, exc=exc)
 
 

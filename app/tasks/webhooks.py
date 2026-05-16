@@ -15,6 +15,42 @@ logger = logging.getLogger(__name__)
 BACKOFF_DELAYS = [60, 300, 1800]  # seconds
 
 
+def _frontend_url(path: str) -> str:
+    base_url = get_settings().frontend_url.rstrip("/")
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    return f"{base_url}{normalized_path}" if base_url else normalized_path
+
+
+def _queue_enrollment_system_email(user: User, product: Product, status: str) -> None:
+    template_key = {
+        "active": "enrollment.access_granted",
+        "reactivated": "enrollment.access_reactivated",
+        "cancelled": "enrollment.access_cancelled",
+        "refunded": "enrollment.access_refunded",
+    }.get(status)
+    if template_key is None:
+        return
+
+    try:
+        from app.tasks.email import send_system_email_task
+
+        send_system_email_task.delay(
+            user.email,
+            template_key,
+            {
+                "user_name": user.name,
+                "product_title": product.title,
+                "product_url": _frontend_url("/courses"),
+            },
+        )
+    except Exception:
+        logger.exception(
+            "Failed to queue webhook enrollment email to=%s template=%s",
+            user.email,
+            template_key,
+        )
+
+
 @celery_app.task(bind=True, max_retries=3)
 def process_webhook_task(
     self,
@@ -133,6 +169,7 @@ def _process_webhook(
             .values(status=status)
         )
         db.commit()
+        _queue_enrollment_system_email(user, product, status)
         return
 
     # Upsert enrollment (active)
@@ -145,8 +182,14 @@ def _process_webhook(
     existing = db.execute(existing_query).scalar_one_or_none()
     if existing:
         if existing.status != "active":
+            previous_status = existing.status
             existing.status = "active"
             db.commit()
+            _queue_enrollment_system_email(
+                user,
+                product,
+                "reactivated" if previous_status != "active" else "active",
+            )
     else:
         enrollment = Enrollment(
             tenant_id=tid,
@@ -157,3 +200,4 @@ def _process_webhook(
         )
         db.add(enrollment)
         db.commit()
+        _queue_enrollment_system_email(user, product, "active")

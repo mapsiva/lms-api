@@ -1,4 +1,5 @@
 """Enrollment business logic."""
+import logging
 import uuid
 from typing import Any
 
@@ -10,6 +11,51 @@ from app.core.errors import AppError
 from app.models.enrollment import Enrollment
 from app.models.product import Product
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+
+def _frontend_url(path: str) -> str:
+    from app.core.config import get_settings
+
+    base_url = get_settings().frontend_url.rstrip("/")
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    return f"{base_url}{normalized_path}" if base_url else normalized_path
+
+
+def _template_for_status(status: str) -> str | None:
+    return {
+        "active": "enrollment.access_granted",
+        "reactivated": "enrollment.access_reactivated",
+        "suspended": "enrollment.access_suspended",
+        "cancelled": "enrollment.access_cancelled",
+        "refunded": "enrollment.access_refunded",
+    }.get(status)
+
+
+def _queue_enrollment_email(user: User, product: Product, status: str) -> None:
+    template_key = _template_for_status(status)
+    if template_key is None:
+        return
+
+    try:
+        from app.tasks.email import send_system_email_task
+
+        send_system_email_task.delay(
+            user.email,
+            template_key,
+            {
+                "user_name": user.name,
+                "product_title": product.title,
+                "product_url": _frontend_url("/courses"),
+            },
+        )
+    except Exception:
+        logger.exception(
+            "Failed to queue enrollment email to=%s template=%s",
+            user.email,
+            template_key,
+        )
 
 
 async def list_enrollments(
@@ -55,26 +101,30 @@ async def create_enrollment(db: AsyncSession, tenant_id: uuid.UUID, body: dict[s
     result = await db.execute(
         select(User).where(User.id == uuid.UUID(str(user_id)), User.tenant_id == tenant_id)
     )
-    if not result.scalar_one_or_none():
+    user = result.scalar_one_or_none()
+    if not user:
         raise AppError(ErrorCode.USER_NOT_FOUND)
 
     result = await db.execute(
         select(Product).where(Product.id == uuid.UUID(str(product_id)), Product.tenant_id == tenant_id)
     )
-    if not result.scalar_one_or_none():
+    product = result.scalar_one_or_none()
+    if not product:
         raise AppError(ErrorCode.PRODUCT_NOT_FOUND)
 
+    status = body.get("status", "active")
     enrollment = Enrollment(
         tenant_id=tenant_id,
         user_id=uuid.UUID(str(user_id)),
         product_id=uuid.UUID(str(product_id)),
-        status=body.get("status", "active"),
+        status=status,
         enrolled_by="admin",
         expires_at=body.get("expires_at"),
     )
     db.add(enrollment)
     await db.commit()
     await db.refresh(enrollment)
+    _queue_enrollment_email(user, product, status)
     return {"id": str(enrollment.id)}
 
 
@@ -89,12 +139,23 @@ async def update_enrollment(db: AsyncSession, tenant_id: uuid.UUID, enrollment_i
     if not enrollment:
         raise AppError(ErrorCode.ENROLLMENT_NOT_FOUND)
 
+    old_status = enrollment.status
     if "status" in body:
         enrollment.status = body["status"]
     if "expires_at" in body:
         enrollment.expires_at = body["expires_at"]
     await db.commit()
     await db.refresh(enrollment)
+    if "status" in body and body["status"] != old_status:
+        user = await db.get(User, enrollment.user_id)
+        product = await db.get(Product, enrollment.product_id)
+        if user and product:
+            template_status = (
+                "reactivated"
+                if body["status"] == "active" and old_status != "active"
+                else body["status"]
+            )
+            _queue_enrollment_email(user, product, template_status)
     return {"id": str(enrollment.id), "status": enrollment.status}
 
 
@@ -124,11 +185,26 @@ async def bulk_enrollments(db: AsyncSession, tenant_id: uuid.UUID, body: dict[st
         raise AppError(ErrorCode.BULK_LIMIT_EXCEEDED)
 
     if action == "enroll":
+        product = await db.get(Product, uuid.UUID(str(product_id)))
+        if product is None or product.tenant_id != tenant_id:
+            raise AppError(ErrorCode.PRODUCT_NOT_FOUND)
+
+        users_by_id = {}
+        users_result = await db.execute(
+            select(User).where(
+                User.tenant_id == tenant_id,
+                User.id.in_([uuid.UUID(str(uid)) for uid in user_ids]),
+            )
+        )
+        for user in users_result.scalars().all():
+            users_by_id[user.id] = user
+
         created = 0
         for uid in user_ids:
+            parsed_user_id = uuid.UUID(str(uid))
             enrollment = Enrollment(
                 tenant_id=tenant_id,
-                user_id=uuid.UUID(str(uid)),
+                user_id=parsed_user_id,
                 product_id=uuid.UUID(str(product_id)),
                 status="active",
                 enrolled_by="admin",
@@ -136,6 +212,8 @@ async def bulk_enrollments(db: AsyncSession, tenant_id: uuid.UUID, body: dict[st
             db.add(enrollment)
             created += 1
         await db.commit()
+        for user in users_by_id.values():
+            _queue_enrollment_email(user, product, "active")
         return {"created": created}
 
     if action in ("suspend", "cancel"):

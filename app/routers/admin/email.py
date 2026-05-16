@@ -16,6 +16,9 @@ from app.schemas.email import (
     CampaignCreate,
     CampaignResponse,
     CampaignSendResponse,
+    SystemTemplatePreviewRequest,
+    SystemTemplatePreviewResponse,
+    SystemTemplateResponse,
     TemplateCreate,
     TemplateResponse,
 )
@@ -64,6 +67,43 @@ async def create_template(
     db: AsyncSession = Depends(get_db),
 ):
     return await email_service.create_template(db, tenant.id, body)
+
+
+@router.get("/system-templates", response_model=list[SystemTemplateResponse])
+async def list_system_templates(
+    _tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+):
+    return await email_service.list_system_templates()
+
+
+@router.get("/system-templates/{template_key}", response_model=SystemTemplateResponse)
+async def get_system_template(
+    template_key: str,
+    _tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+):
+    templates = await email_service.list_system_templates()
+    for template in templates:
+        if template.key == template_key:
+            return template
+    from app.core.error_codes import ErrorCode
+    from app.core.errors import AppError
+
+    raise AppError(ErrorCode.TEMPLATE_NOT_FOUND)
+
+
+@router.post(
+    "/system-templates/{template_key}/preview",
+    response_model=SystemTemplatePreviewResponse,
+)
+async def preview_system_template(
+    template_key: str,
+    body: SystemTemplatePreviewRequest,
+    _tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+):
+    return await email_service.preview_system_template(template_key, body.context or {})
 
 
 # --- Campaigns ---

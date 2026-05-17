@@ -12,12 +12,14 @@ from app.schemas.admin_community import (
     ChannelCreate,
     ChannelResponse,
     HideResponse,
+    PinResponse,
     ReportResponse,
     SpaceCreate,
     SpaceResponse,
     SuspendResponse,
 )
 from app.services import admin_community as admin_community_service
+from app.services import community as community_service
 
 router = APIRouter(prefix="/admin/community", tags=["admin:community"])
 
@@ -104,3 +106,25 @@ async def hide_comment(
 ):
     await admin_community_service.hide_comment(db, tenant.id, comment_id)
     return {"hidden": True}
+
+
+@router.patch("/posts/{post_id}/pin", response_model=PinResponse)
+async def pin_post(
+    post_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await community_service.pin_post(db, tenant.id, post_id)
+    return {"pinned": True}
+
+
+@router.patch("/posts/{post_id}/unpin", response_model=PinResponse)
+async def unpin_post(
+    post_id: uuid.UUID,
+    tenant: Tenant = Depends(get_current_tenant),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await community_service.unpin_post(db, tenant.id, post_id)
+    return {"pinned": False}

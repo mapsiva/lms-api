@@ -78,6 +78,7 @@ class Post(Base):
     likes_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     comments_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

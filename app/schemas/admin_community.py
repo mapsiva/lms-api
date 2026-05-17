@@ -64,5 +64,9 @@ class HideResponse(BaseModel):
     hidden: bool
 
 
+class PinResponse(BaseModel):
+    pinned: bool
+
+
 class SuspendResponse(BaseModel):
     suspended: bool

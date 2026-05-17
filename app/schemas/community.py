@@ -41,6 +41,7 @@ class PostResponse(BaseModel):
     likes_count: int
     comments_count: int
     is_hidden: bool
+    is_pinned: bool
     created_at: datetime
     updated_at: datetime
 

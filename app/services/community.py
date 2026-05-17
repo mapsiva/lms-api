@@ -114,9 +114,29 @@ async def list_posts(db: AsyncSession, tenant_id: uuid.UUID, user: User, channel
     result = await db.execute(
         select(Post)
         .where(Post.channel_id == channel_id, Post.is_hidden == False)  # noqa: E712
-        .order_by(Post.created_at.desc())
+        .order_by(Post.is_pinned.desc(), Post.created_at.desc())
     )
     return result.scalars().all()
+
+
+async def pin_post(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -> Post:
+    post = await db.get(Post, post_id)
+    if post is None or post.tenant_id != tenant_id:
+        raise AppError(ErrorCode.POST_NOT_FOUND)
+    post.is_pinned = True
+    await db.commit()
+    await db.refresh(post)
+    return post
+
+
+async def unpin_post(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -> Post:
+    post = await db.get(Post, post_id)
+    if post is None or post.tenant_id != tenant_id:
+        raise AppError(ErrorCode.POST_NOT_FOUND)
+    post.is_pinned = False
+    await db.commit()
+    await db.refresh(post)
+    return post
 
 
 async def create_post(

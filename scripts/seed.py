@@ -224,7 +224,7 @@ async def seed_company_members(
     goals_by_company = [
         ("Concluir onboarding comercial", "completion_rate", 80, 30),
         ("Certificar equipe de vendas",   "completion_rate", 90, 45),
-        ("Meta de engajamento Q2",        "lesson_count",    50, 60),
+        ("Meta de engajamento Q2",        "enrollments",     50, 60),
         ("Formacao de consultores",       "completion_rate", 75, 90),
     ]
 
@@ -629,15 +629,15 @@ async def seed_products(
 
 BADGE_SPECS = [
     ("Primeira Semana",    "Concluiu atividades na primeira semana.",           "completion", "common",   "lesson_completed",  {"min_completed_lessons": 5},  100),
-    ("7 Dias Seguidos",    "Manteve sequencia de 7 dias consecutivos.",         "streak",     "uncommon", "streak_milestone",  {"min_streak": 7},             200),
-    ("Top Performer",      "Atingiu o top 3 do ranking da empresa.",            "ranking",    "rare",     "ranking_top3",      {"top_n": 3},                  500),
-    ("Mestre Negociador",  "Completou o curso de Negociacao Avancada.",         "completion", "uncommon", "course_completed",  {"course_slug": "negociacao-avancada"}, 300),
-    ("Mentor da Turma",    "Respondeu 10 duvidas na comunidade.",               "community",  "rare",     "community_answers", {"min_answers": 10},           400),
+    ("7 Dias Seguidos",    "Manteve sequencia de 7 dias consecutivos.",         "behavior",   "rare", "streak_milestone",  {"min_streak": 7},             200),
+    ("Top Performer",      "Atingiu o top 3 do ranking da empresa.",            "event",      "rare",     "ranking_top3",      {"top_n": 3},                  500),
+    ("Mestre Negociador",  "Completou o curso de Negociacao Avancada.",         "completion", "rare", "course_completed",  {"course_slug": "negociacao-avancada"}, 300),
+    ("Mentor da Turma",    "Respondeu 10 duvidas na comunidade.",               "social",     "rare",     "community_answers", {"min_answers": 10},           400),
     ("Velocista",          "Completou 3 cursos em menos de 30 dias.",           "completion", "epic",     "multi_course",      {"courses": 3, "days": 30},    1000),
     ("Embaixador CS",      "Completou o curso de Customer Success.",            "completion", "common",   "course_completed",  {"course_slug": "customer-success-na-pratica"}, 150),
     ("Pipeline Master",    "Completou o curso de Gestao de Pipeline.",          "completion", "common",   "course_completed",  {"course_slug": "gestao-de-pipeline"}, 150),
-    ("Streaker de Platina", "Manteve sequencia de 30 dias.",                    "streak",     "epic",     "streak_milestone",  {"min_streak": 30},            800),
-    ("Data-Driven",        "Completou o curso de Analise de Dados para Vendas.","completion", "uncommon", "course_completed",  {"course_slug": "analise-dados-vendas"}, 250),
+    ("Streaker de Platina", "Manteve sequencia de 30 dias.",                    "behavior",   "epic",     "streak_milestone",  {"min_streak": 30},            800),
+    ("Data-Driven",        "Completou o curso de Analise de Dados para Vendas.","completion", "rare", "course_completed",  {"course_slug": "analise-dados-vendas"}, 250),
 ]
 
 async def seed_gamification(

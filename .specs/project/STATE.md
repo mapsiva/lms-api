@@ -18,6 +18,7 @@
 
 ## TODO
 - Run full `./appenv/bin/pytest tests/` with local PostgreSQL/Redis reachable outside the restricted sandbox.
+- Community spaces are tenant-scoped only — no company_id. All companies share same spaces/channels.
 
 ## Preferences
 - Use Portuguese for user-facing error messages (already established).

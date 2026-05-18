@@ -4,8 +4,8 @@
 - None
 
 ## Next
-- None
-- [ ] Full-text transcript search via pgvector
+- [ ] Full-text transcript search via pgvector (semantic, upgrade from tsvector)
+- [ ] Community spaces per company (add company_id to spaces model)
 
 ## Done
 - [x] Initial FastAPI backend with multi-tenant auth
@@ -20,3 +20,7 @@
 - [x] Video provider adapter expansion (Mux, Vimeo, Panda)
 - [x] Gamification badge engine
 - [x] Full-text transcript search (tsvector + GIN index)
+- [x] Email marketing system with system email templates
+- [x] Community spaces gated behind product enrollment (product_spaces table)
+- [x] Pinned posts in community (is_pinned column + migration)
+- [x] Seed expanded to full 10x dataset (21 users, 4 companies, 7 spaces, 19 channels)
